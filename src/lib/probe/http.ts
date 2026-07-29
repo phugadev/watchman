@@ -15,6 +15,7 @@ import {
   type ProbeResult,
   type ProbeSpec,
   describeError,
+  firstDn,
   truncateError,
 } from "./types";
 
@@ -96,8 +97,8 @@ function requestOnce(
           const validTo = cert.valid_to ? new Date(cert.valid_to) : undefined;
           return {
             protocol: socket.getProtocol?.() ?? null,
-            subject: cert.subject?.CN,
-            issuer: cert.issuer?.CN ?? cert.issuer?.O,
+            subject: firstDn(cert.subject?.CN),
+            issuer: firstDn(cert.issuer?.CN) ?? firstDn(cert.issuer?.O),
             validTo: validTo?.toISOString(),
             daysRemaining: validTo
               ? Math.floor((validTo.getTime() - Date.now()) / 86_400_000)

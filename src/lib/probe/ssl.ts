@@ -5,6 +5,7 @@ import {
   type ProbeResult,
   type ProbeSpec,
   describeError,
+  firstDn,
   truncateError,
 } from "./types";
 
@@ -82,8 +83,8 @@ export async function probeSsl(spec: ProbeSpec): Promise<ProbeResult> {
         authorizationError: socket.authorizationError
           ? String(socket.authorizationError)
           : undefined,
-        subject: cert.subject?.CN,
-        issuer: cert.issuer?.CN ?? cert.issuer?.O,
+        subject: firstDn(cert.subject?.CN),
+        issuer: firstDn(cert.issuer?.CN) ?? firstDn(cert.issuer?.O),
         altNames: cert.subjectaltname,
         validFrom: validFrom.toISOString(),
         validTo: validTo.toISOString(),

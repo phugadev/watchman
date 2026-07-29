@@ -94,6 +94,15 @@ export function describeError(err: unknown): string {
   return String(err);
 }
 
+/**
+ * Certificate distinguished-name fields are `string | string[]` — a cert may
+ * legitimately carry several CN or O entries. Take the first for display.
+ */
+export function firstDn(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 /** Clamp long upstream errors so they stay renderable in a table cell. */
 export function truncateError(msg: string, max = 300): string {
   const flat = msg.replace(/\s+/g, " ").trim();
