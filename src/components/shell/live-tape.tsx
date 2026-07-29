@@ -37,11 +37,11 @@ export function LiveTape({
       try {
         const event = JSON.parse(e.data) as WatchmanEvent;
         setEvents((prev) => {
-          // The stream replays recent history on connect, which overlaps whatever
-          // the server already rendered. Keep only events newer than the highest
-          // sequence held, so the overlap collapses instead of doubling up.
-          const highest = prev.length ? Math.max(...prev.map((p) => p.seq)) : 0;
-          if (event.seq <= highest) return prev;
+          // The stream replays recent history on connect, overlapping whatever the
+          // server already rendered — and in dev, StrictMode opens the stream twice.
+          // Membership by id collapses all of that; the list is capped at `limit`, so
+          // the scan is trivial.
+          if (prev.some((p) => p.id === event.id)) return prev;
           return [...prev, event].slice(-limit);
         });
       } catch {
@@ -94,7 +94,7 @@ export function LiveTape({
             <span className="anim-blink">▍</span> waiting for the next check…
           </li>
         ) : (
-          events.map((event) => <TapeRow key={event.seq} event={event} />)
+          events.map((event) => <TapeRow key={event.id} event={event} />)
         )}
       </ol>
     </div>

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 
 /**
@@ -60,16 +61,23 @@ type WatchmanEventBody =
     };
 
 /**
- * A monotonic sequence number, stamped by the bus.
+ * A stable identity, stamped once at publish time.
  *
  * Both the server-rendered tape and the SSE replay buffer emit recent history, so
- * without an identity the client renders each event twice. `seq` lets it keep only
- * what it has not seen, and covers the reverse gap too: events published between the
- * server render and the moment the stream actually connects.
+ * without an identity the client renders every event twice. It also covers the
+ * reverse gap: events published between the server render and the moment the stream
+ * actually connects.
+ *
+ * A random id rather than a monotonic counter, deliberately. A counter is only a
+ * valid identity if every reader shares one instance of it, and that is not
+ * guaranteed — server components and route handlers can be evaluated in separate
+ * module graphs, which produces two different events wearing the same number. An id
+ * generated at publish and carried in the buffer is the same value for every reader
+ * by construction.
  */
-export type WatchmanEvent = WatchmanEventBody & { seq: number };
+export type WatchmanEvent = WatchmanEventBody & { id: string };
 
-/** What callers pass to `publish` — the bus owns `seq`. */
+/** What callers pass to `publish` — the bus owns `id`. */
 export type WatchmanEventInput = WatchmanEventBody;
 
 export type WatchmanEventType = WatchmanEvent["type"];
@@ -78,7 +86,6 @@ export type WatchmanEventType = WatchmanEvent["type"];
 const globalForBus = globalThis as unknown as {
   __watchmanBus?: EventEmitter;
   __watchmanRecent?: WatchmanEvent[];
-  __watchmanSeq?: { n: number };
 };
 
 const emitter =
@@ -100,10 +107,9 @@ globalForBus.__watchmanBus = emitter;
  */
 const RECENT_LIMIT = 60;
 const recent: WatchmanEvent[] = (globalForBus.__watchmanRecent ??= []);
-const counter = (globalForBus.__watchmanSeq ??= { n: 0 });
 
 export function publish(input: WatchmanEventInput): void {
-  const event = { ...input, seq: ++counter.n } as WatchmanEvent;
+  const event = { ...input, id: randomUUID() } as WatchmanEvent;
   recent.push(event);
   if (recent.length > RECENT_LIMIT) recent.splice(0, recent.length - RECENT_LIMIT);
   emitter.emit("event", event);
