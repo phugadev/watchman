@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+/*
+ * Watchman design tokens.
+ *
+ * The neutral ramp is deliberately hue-shifted to 148 (a cool green) rather than
+ * pure grey — near-black surfaces pick up a faint instrument-panel cast, and warm
+ * off-white text at hue 96 sits against it without the clinical blue tint you get
+ * from #fff on #000. Colour is *signal only*: if something is yellow, mint, or red
+ * on this surface, it means something.
+ */
+@theme {
+  /* ---- surfaces ------------------------------------------------------ */
+  --color-void: oklch(0.145 0.01 148); /* page background */
+  --color-panel: oklch(0.18 0.012 148); /* raised card */
+  --color-panel-2: oklch(0.215 0.012 148); /* nested / hover */
+  --color-hairline: oklch(0.31 0.012 148); /* borders, rules */
+  --color-hairline-soft: oklch(0.255 0.012 148);
+
+  /* ---- text ---------------------------------------------------------- */
+  --color-bone: oklch(0.94 0.008 96); /* primary text */
+  --color-ash: oklch(0.69 0.012 148); /* secondary text */
+  --color-slate: oklch(0.52 0.012 148); /* tertiary / disabled */
+
+  /* ---- signal -------------------------------------------------------- */
+  --color-amp: oklch(0.88 0.18 96); /* acid yellow — attention, brand */
+  --color-live: oklch(0.76 0.15 155); /* mint — healthy, operational */
+  --color-alarm: oklch(0.67 0.22 26.43); /* red — down, failing */
+  --color-warn: oklch(0.78 0.16 62); /* amber — degraded */
+  --color-info: oklch(0.68 0.18 255); /* blue — informational */
+  --color-violet: oklch(0.64 0.18 302); /* maintenance */
+
+  /* ---- type ---------------------------------------------------------- */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
+  /* ---- motion -------------------------------------------------------- */
+  --ease-instrument: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- radii --------------------------------------------------------- */
+  /* Watchman is square. Radius is reserved for pills and avatars only. */
+  --radius-none: 0px;
+}
+
+:root {
+  color-scheme: dark;
+  --hatch-color: oklch(1 0 0 / 0.045);
+  --grid-color: oklch(1 0 0 / 0.028);
+}
+
+* {
+  border-color: var(--color-hairline-soft);
+}
+
+html {
+  background: var(--color-void);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv01";
+}
+
+::selection {
+  background: var(--color-amp);
+  color: var(--color-void);
+}
+
+/* Tabular figures everywhere numbers are compared vertically. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* --------------------------------------------------------------------------
+ * Surface textures
+ *
+ * Three repeating backgrounds carry most of the visual identity:
+ *   .hatch — 45° pinstripes, used on frames and "empty"/inert regions
+ *   .grid  — engineering graph paper, used behind charts
+ *   .scan  — 1px horizontal scanlines, used on live/streaming regions
+ * ---------------------------------------------------------------------- */
+.hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--hatch-color) 0px,
+    var(--hatch-color) 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+.grid-paper {
+  background-image:
+    linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.scan {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 0.022) 0px,
+    oklch(1 0 0 / 0.022) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Dotted rule — the workhorse divider. */
+.rule-dotted {
+  border-top: 1px dashed var(--color-hairline);
+  border-image: repeating-linear-gradient(
+      to right,
+      var(--color-hairline) 0 2px,
+      transparent 2px 6px
+    )
+    1;
+}
+
+/* --------------------------------------------------------------------------
+ * Focus ring — square, offset, amp yellow. Never a soft glow.
+ * ---------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-amp);
+  outline-offset: 2px;
+  border-radius: 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Scrollbars — thin, hairline, no rounded thumbs.
+ * ---------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-hairline) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-hairline);
+  border: 3px solid var(--color-void);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate);
+}
+
+/* --------------------------------------------------------------------------
+ * Animations
+ * ---------------------------------------------------------------------- */
+@keyframes wm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes wm-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes wm-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+@keyframes wm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wm-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.anim-pulse {
+  animation: wm-pulse 2s var(--ease-instrument) infinite;
+}
+.anim-rise {
+  animation: wm-rise 0.4s var(--ease-instrument) both;
+}
+.anim-blink {
+  animation: wm-blink 1.1s step-end infinite;
+}
+
+/* A single beam of light travelling across a loading bar. */
+.anim-sweep::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inline-size: 25%;
+  background: linear-gradient(90deg, transparent, var(--color-amp), transparent);
+  animation: wm-sweep 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-pulse,
+  .anim-rise,
+  .anim-blink,
+  .anim-sweep::after {
+    animation: none !important;
+  }
+}
