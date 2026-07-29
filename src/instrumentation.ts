@@ -11,6 +11,11 @@ export async function register(): Promise<void> {
   // Node-only, and this module is evaluated in both.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  // Fail loudly and immediately on missing required configuration, rather than at
+  // whatever later moment a request first needs it.
+  const { assertRuntimeConfig } = await import("@/lib/env");
+  assertRuntimeConfig();
+
   const { startScheduler } = await import("@/lib/scheduler");
   const { db } = await import("@/lib/db");
   const { monitors } = await import("@/lib/db/schema");

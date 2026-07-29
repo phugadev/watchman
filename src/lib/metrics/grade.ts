@@ -159,15 +159,30 @@ export const GRADE_TONE: Record<Grade, "amp" | "live" | "info" | "warn" | "alarm
     F: "alarm",
   };
 
-/** Raw oklch values, for contexts with no Tailwind (SVG badges, emails). */
+/**
+ * sRGB hex equivalents of the oklch tokens, for contexts with no Tailwind and no
+ * guarantee of CSS Color 4 support: SVG badges, emails, image converters.
+ *
+ * Hardcoded rather than computed at runtime, and hex rather than oklch(), because a
+ * README badge gets rendered by GitHub's camo proxy, feed readers, and screenshot
+ * pipelines — anything that does not understand oklch would draw it black.
+ */
 export const GRADE_HEX: Record<Grade, string> = {
-  S: "oklch(0.88 0.18 96)",
-  A: "oklch(0.76 0.15 155)",
-  B: "oklch(0.68 0.18 255)",
-  C: "oklch(0.78 0.16 62)",
-  D: "oklch(0.67 0.22 26.43)",
-  F: "oklch(0.67 0.22 26.43)",
+  S: "#fbd509", // amp
+  A: "#52cd86", // live
+  B: "#3e98ff", // info
+  C: "#ff9d36", // warn
+  D: "#ff4945", // alarm
+  F: "#ff4945", // alarm
 };
+
+/** Neutral hexes used alongside GRADE_HEX in the same non-CSS contexts. */
+export const BADGE_HEX = {
+  label: "#161b16", // panel-2
+  labelText: "#979d97", // ash
+  valueText: "#080b08", // void
+  inactive: "#646b65", // slate
+} as const;
 
 export const GRADE_CAPTION: Record<Grade, string> = {
   S: "Flawless",

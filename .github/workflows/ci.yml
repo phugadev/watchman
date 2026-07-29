@@ -24,9 +24,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # No WATCHMAN_SECRET here on purpose: a build must not require runtime
+      # configuration. This step is what would catch a regression to eager
+      # resolution of the secret.
       - run: pnpm build
-        env:
-          WATCHMAN_SECRET: ci-placeholder-secret-not-used-at-build-time
 
   docker:
     runs-on: ubuntu-latest

@@ -9,7 +9,14 @@ import { EventEmitter } from "node:events";
  * few milliseconds.
  */
 
-export type WatchmanEvent =
+/**
+ * The event variants, before the bus stamps a sequence number on them.
+ *
+ * Declared as a standalone union and intersected below rather than written inline as
+ * `Seq & (A | B)` — SWC's TypeScript parser rejects a parenthesised union inside an
+ * intersection, so that form typechecks under tsc but fails the Turbopack build.
+ */
+type WatchmanEventBody =
   | {
       type: "check";
       at: number;
@@ -52,12 +59,26 @@ export type WatchmanEvent =
       monitorName: string;
     };
 
+/**
+ * A monotonic sequence number, stamped by the bus.
+ *
+ * Both the server-rendered tape and the SSE replay buffer emit recent history, so
+ * without an identity the client renders each event twice. `seq` lets it keep only
+ * what it has not seen, and covers the reverse gap too: events published between the
+ * server render and the moment the stream actually connects.
+ */
+export type WatchmanEvent = WatchmanEventBody & { seq: number };
+
+/** What callers pass to `publish` — the bus owns `seq`. */
+export type WatchmanEventInput = WatchmanEventBody;
+
 export type WatchmanEventType = WatchmanEvent["type"];
 
 // Cached on globalThis so dev HMR does not orphan subscribers on a fresh emitter.
 const globalForBus = globalThis as unknown as {
   __watchmanBus?: EventEmitter;
   __watchmanRecent?: WatchmanEvent[];
+  __watchmanSeq?: { n: number };
 };
 
 const emitter =
@@ -79,8 +100,10 @@ globalForBus.__watchmanBus = emitter;
  */
 const RECENT_LIMIT = 60;
 const recent: WatchmanEvent[] = (globalForBus.__watchmanRecent ??= []);
+const counter = (globalForBus.__watchmanSeq ??= { n: 0 });
 
-export function publish(event: WatchmanEvent): void {
+export function publish(input: WatchmanEventInput): void {
+  const event = { ...input, seq: ++counter.n } as WatchmanEvent;
   recent.push(event);
   if (recent.length > RECENT_LIMIT) recent.splice(0, recent.length - RECENT_LIMIT);
   emitter.emit("event", event);

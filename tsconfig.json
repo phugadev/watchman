@@ -15,6 +15,9 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // The scripts/ helpers run under tsx and import with explicit .ts extensions.
+    // Safe here because this config only ever typechecks — Next owns the build.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "incremental": true,
     "noUncheckedIndexedAccess": true,

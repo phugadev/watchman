@@ -21,14 +21,30 @@ function required(name: string, value: string | undefined): string {
  * path, so sessions survive a dev-server restart without anyone having to set up
  * a .env just to click around. In production it is mandatory — a predictable
  * secret would let anyone forge a session cookie.
+ *
+ * Resolved lazily and memoised rather than at module load. `next build` runs with
+ * NODE_ENV=production and imports every route to collect page data, so eager
+ * resolution would make a *build* require a runtime secret it has no use for. The
+ * fail-fast check lives in instrumentation.ts instead, which runs when the server
+ * actually starts serving.
  */
+let cachedSecret: string | undefined;
+
 function resolveSecret(): string {
+  if (cachedSecret !== undefined) return cachedSecret;
+
   const provided = process.env.WATCHMAN_SECRET;
-  if (isProd) return required("WATCHMAN_SECRET", provided);
-  if (provided) return provided;
-  return createHash("sha256")
-    .update(`watchman-dev-only:${process.env.WATCHMAN_DB_PATH ?? "default"}`)
-    .digest("hex");
+  if (isProd) {
+    cachedSecret = required("WATCHMAN_SECRET", provided);
+  } else if (provided) {
+    cachedSecret = provided;
+  } else {
+    cachedSecret = createHash("sha256")
+      .update(`watchman-dev-only:${process.env.WATCHMAN_DB_PATH ?? "default"}`)
+      .digest("hex");
+  }
+
+  return cachedSecret;
 }
 
 const num = (value: string | undefined, fallback: number): number => {
@@ -43,7 +59,9 @@ const bool = (value: string | undefined, fallback: boolean): boolean => {
 
 export const env = {
   isProd,
-  secret: resolveSecret(),
+  get secret(): string {
+    return resolveSecret();
+  },
   dbPath: process.env.WATCHMAN_DB_PATH ?? "./data/watchman.db",
 
   /** Public origin. Used to build heartbeat URLs and status-page links. */
@@ -79,3 +97,21 @@ export const env = {
 } as const;
 
 export type Env = typeof env;
+
+/**
+ * Validate configuration that must be present to serve traffic.
+ *
+ * Called from instrumentation.ts on server start, so a container missing its secret
+ * dies immediately and visibly rather than at whatever later moment someone first
+ * tries to sign in.
+ */
+export function assertRuntimeConfig(): void {
+  // Touching the getter is what forces resolution — and the throw, if it is unset.
+  void env.secret;
+
+  if (isProd && env.publicUrl.startsWith("http://localhost")) {
+    console.warn(
+      "[watchman] WATCHMAN_URL is unset — heartbeat URLs and status-page links will point at localhost",
+    );
+  }
+}
