@@ -1,0 +1,20 @@
+services:
+  watchman:
+    build: .
+    # image: ghcr.io/OWNER/watchman:latest   # uncomment to use a published image
+    container_name: watchman
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Required. Signs session cookies and webhook payloads.
+      # Generate one with: openssl rand -hex 32
+      WATCHMAN_SECRET: ${WATCHMAN_SECRET:?set WATCHMAN_SECRET in .env}
+      # Public origin, used to build heartbeat URLs and status-page links.
+      WATCHMAN_URL: ${WATCHMAN_URL:-http://localhost:3000}
+      WATCHMAN_DB_PATH: /data/watchman.db
+    volumes:
+      - watchman-data:/data
+
+volumes:
+  watchman-data:
