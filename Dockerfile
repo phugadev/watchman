@@ -5,8 +5,9 @@
 # file on a mounted volume.
 
 # ---- deps -------------------------------------------------------------------
-# better-sqlite3 is a native addon, so the builder needs a toolchain. It is
-# compiled here and copied forward, keeping build tools out of the final image.
+# better-sqlite3 ships prebuilt addons for linuxmusl, so this normally needs no
+# toolchain — but the toolchain stays as a fallback in case a future version or
+# architecture has no matching prebuild. It costs only time in a discarded stage.
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++ libc6-compat
@@ -23,6 +24,20 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
+
+# Guarantee the native addon is present in the standalone tree, and prove it loads.
+#
+# Next's tracer does currently pick up better-sqlite3's prebuilds/, but nothing in the
+# source statically requires the .node file by path, so that is an implementation
+# detail rather than a contract — and a silent regression would surface as a container
+# that serves pages and cannot touch the database. Dereferencing the real package
+# (pnpm leaves node_modules/better-sqlite3 as a symlink into the store, which COPY
+# cannot usefully carry) and then requiring it turns that class of failure into a
+# build error here instead.
+RUN REAL="$(node -e "console.log(require('node:path').dirname(require.resolve('better-sqlite3/package.json')))")" \
+ && mkdir -p .next/standalone/node_modules/better-sqlite3 \
+ && cp -RL "$REAL/." .next/standalone/node_modules/better-sqlite3/ \
+ && node -e "require('/app/.next/standalone/node_modules/better-sqlite3'); console.log('ok: better-sqlite3 loads from the standalone tree')"
 
 # ---- runtime ----------------------------------------------------------------
 FROM node:22-alpine AS runner
@@ -41,11 +56,6 @@ COPY --from=build --chown=watchman:watchman /app/.next/static ./.next/static
 COPY --from=build --chown=watchman:watchman /app/public ./public
 # Drizzle migrations are applied on boot, so they must be present at runtime.
 COPY --from=build --chown=watchman:watchman /app/drizzle ./drizzle
-# Next's file tracing cannot follow better-sqlite3's runtime binding lookup;
-# copy the compiled addon in explicitly.
-COPY --from=build --chown=watchman:watchman /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
-COPY --from=build --chown=watchman:watchman /app/node_modules/bindings ./node_modules/bindings
-COPY --from=build --chown=watchman:watchman /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
 
 RUN mkdir -p /data && chown -R watchman:watchman /data
 VOLUME /data
