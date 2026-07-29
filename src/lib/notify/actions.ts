@@ -5,13 +5,21 @@ import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { channels, CHANNEL_KINDS, type ChannelKind } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { testChannel } from "./index";
 import { telegramConfigSchema, webhookConfigSchema } from "./types";
 
 export interface ChannelActionState {
   error?: string;
   ok?: boolean;
+  /**
+   * The generated webhook signing secret, returned once on creation.
+   *
+   * Whoever writes the receiver needs this value, and the UI otherwise shows only a
+   * masked prefix — so without surfacing it here the channel would be impossible to
+   * verify against. Same one-time-display contract as an invite link.
+   */
+  secret?: string;
   /** Set after a test send, so the UI can report the outcome inline. */
   testResult?: { ok: boolean; message: string };
 }
@@ -20,7 +28,7 @@ export async function createChannelAction(
   _prev: ChannelActionState,
   formData: FormData,
 ): Promise<ChannelActionState> {
-  await requireUser();
+  await requireAdmin();
 
   const name = String(formData.get("name") ?? "").trim();
   const kind = String(formData.get("kind") ?? "") as ChannelKind;
@@ -29,13 +37,15 @@ export async function createChannelAction(
   if (!CHANNEL_KINDS.includes(kind)) return { error: "Pick a channel type" };
 
   let config: unknown;
+  let generatedSecret: string | undefined;
 
   if (kind === "webhook") {
+    // Minted server-side rather than typed by the user: a secret the browser chose
+    // is a secret the browser's history remembers.
+    generatedSecret = randomBytes(24).toString("base64url");
     const parsed = webhookConfigSchema.safeParse({
       url: String(formData.get("url") ?? "").trim(),
-      // Minted server-side and shown once. A secret the browser chose is a secret
-      // the browser's history remembers.
-      secret: randomBytes(24).toString("base64url"),
+      secret: generatedSecret,
     });
     if (!parsed.success) {
       return { error: "Enter a valid https:// URL for the webhook" };
@@ -67,14 +77,54 @@ export async function createChannelAction(
     .run();
 
   revalidatePath("/channels");
-  return { ok: true };
+  return { ok: true, secret: generatedSecret };
+}
+
+/**
+ * Re-issue a webhook's signing secret.
+ *
+ * The only way to recover from a lost secret, since the UI shows a masked prefix and
+ * nothing reveals the stored value. Deliveries signed with the old secret will start
+ * failing verification immediately, which is the point.
+ */
+export async function rotateWebhookSecretAction(
+  _prev: ChannelActionState,
+  formData: FormData,
+): Promise<ChannelActionState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+
+  const channel = db.select().from(channels).where(eq(channels.id, id)).get();
+  if (!channel || channel.kind !== "webhook") {
+    return { error: "Not a webhook channel" };
+  }
+
+  const existing = webhookConfigSchema.safeParse(safeJson(channel.config));
+  if (!existing.success) return { error: "This channel's config is unreadable" };
+
+  const secret = randomBytes(24).toString("base64url");
+  db.update(channels)
+    .set({ config: JSON.stringify({ ...existing.data, secret }) })
+    .where(eq(channels.id, id))
+    .run();
+
+  revalidatePath("/channels");
+  return { ok: true, secret };
+}
+
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export async function testChannelAction(
   _prev: ChannelActionState,
   formData: FormData,
 ): Promise<ChannelActionState> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Missing channel" };
 
@@ -92,7 +142,7 @@ export async function testChannelAction(
 }
 
 export async function toggleChannelAction(formData: FormData): Promise<void> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const channel = db.select().from(channels).where(eq(channels.id, id)).get();
   if (!channel) return;
@@ -105,7 +155,7 @@ export async function toggleChannelAction(formData: FormData): Promise<void> {
 }
 
 export async function deleteChannelAction(formData: FormData): Promise<void> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   // monitor_channels rows cascade from the schema.
   if (id) db.delete(channels).where(eq(channels.id, id)).run();

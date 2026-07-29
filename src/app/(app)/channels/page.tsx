@@ -4,6 +4,7 @@ import { EmptyState, Panel, Rule, SectionHeader } from "@/components/ui/frame";
 import { Code, KeyValue, MonoLabel } from "@/components/ui/mono";
 import {
   NewChannelForm,
+  RotateSecretButton,
   TestChannelButton,
 } from "@/components/channels/channel-forms";
 import { requireUser } from "@/lib/auth/session";
@@ -45,14 +46,18 @@ function describeConfig(kind: string, raw: string): { label: string; value: stri
 }
 
 export default async function ChannelsPage() {
-  await requireUser();
+  // Members can see how alerting is wired and whether deliveries are landing —
+  // useful during an incident — but only admins can change it. Channels hold
+  // credentials and decide whether anyone gets paged at all.
+  const user = await requireUser();
+  const isAdmin = user.role === "admin";
   const rows = listChannels();
   const deliveries = listRecentDeliveries(25);
 
   return (
     <div className="flex flex-col gap-8">
       <SectionHeader label="alert channels">
-        <NewChannelForm />
+        {isAdmin ? <NewChannelForm /> : <MonoLabel tone="slate">read only</MonoLabel>}
       </SectionHeader>
 
       {rows.length === 0 ? (
@@ -83,20 +88,27 @@ export default async function ChannelsPage() {
                   </MonoLabel>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <form action={toggleChannelAction}>
-                    <input type="hidden" name="id" value={channel.id} />
-                    <Button type="submit" variant="bracket" size="sm">
-                      {channel.enabled ? "disable" : "enable"}
-                    </Button>
-                  </form>
-                  <form action={deleteChannelAction}>
-                    <input type="hidden" name="id" value={channel.id} />
-                    <Button type="submit" variant="bracket" size="sm" className="hover:text-alarm">
-                      delete
-                    </Button>
-                  </form>
-                </div>
+                {isAdmin ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <form action={toggleChannelAction}>
+                      <input type="hidden" name="id" value={channel.id} />
+                      <Button type="submit" variant="bracket" size="sm">
+                        {channel.enabled ? "disable" : "enable"}
+                      </Button>
+                    </form>
+                    <form action={deleteChannelAction}>
+                      <input type="hidden" name="id" value={channel.id} />
+                      <Button
+                        type="submit"
+                        variant="bracket"
+                        size="sm"
+                        className="hover:text-alarm"
+                      >
+                        delete
+                      </Button>
+                    </form>
+                  </div>
+                ) : null}
               </div>
 
               <Rule />
@@ -118,8 +130,17 @@ export default async function ChannelsPage() {
                 </p>
               ) : null}
 
-              <Rule />
-              <TestChannelButton channelId={channel.id} />
+              {isAdmin ? (
+                <>
+                  <Rule />
+                  <div className="flex flex-col gap-3">
+                    <TestChannelButton channelId={channel.id} />
+                    {channel.kind === "webhook" ? (
+                      <RotateSecretButton channelId={channel.id} />
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
             </Panel>
           ))}
         </div>

@@ -19,7 +19,10 @@ export const metadata: Metadata = { title: "Status pages" };
 export const dynamic = "force-dynamic";
 
 export default async function StatusPagesPage() {
-  await requireUser();
+  // Publishing a status page exposes service names and availability to the open
+  // internet, so composition is an admin decision.
+  const user = await requireUser();
+  const isAdmin = user.role === "admin";
   const pages = listStatusPages();
   const monitors = listMonitorsWithHealth(0);
 
@@ -32,7 +35,11 @@ export default async function StatusPagesPage() {
   return (
     <div className="flex flex-col gap-8">
       <SectionHeader label="status pages">
-        <StatusPageForm monitors={monitorOptions} />
+        {isAdmin ? (
+          <StatusPageForm monitors={monitorOptions} />
+        ) : (
+          <MonoLabel tone="slate">read only</MonoLabel>
+        )}
       </SectionHeader>
 
       {pages.length === 0 ? (
@@ -73,25 +80,27 @@ export default async function StatusPagesPage() {
                     </MonoLabel>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
-                    <form action={togglePublishedAction}>
-                      <input type="hidden" name="id" value={page.id} />
-                      <Button type="submit" variant="bracket" size="sm">
-                        {page.published ? "unpublish" : "publish"}
-                      </Button>
-                    </form>
-                    <form action={deleteStatusPageAction}>
-                      <input type="hidden" name="id" value={page.id} />
-                      <Button
-                        type="submit"
-                        variant="bracket"
-                        size="sm"
-                        className="hover:text-alarm"
-                      >
-                        delete
-                      </Button>
-                    </form>
-                  </div>
+                  {isAdmin ? (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <form action={togglePublishedAction}>
+                        <input type="hidden" name="id" value={page.id} />
+                        <Button type="submit" variant="bracket" size="sm">
+                          {page.published ? "unpublish" : "publish"}
+                        </Button>
+                      </form>
+                      <form action={deleteStatusPageAction}>
+                        <input type="hidden" name="id" value={page.id} />
+                        <Button
+                          type="submit"
+                          variant="bracket"
+                          size="sm"
+                          className="hover:text-alarm"
+                        >
+                          delete
+                        </Button>
+                      </form>
+                    </div>
+                  ) : null}
                 </div>
 
                 <Rule />
@@ -131,12 +140,16 @@ export default async function StatusPagesPage() {
                   </div>
                 )}
 
-                <Rule />
-                <StatusPageForm
-                  monitors={monitorOptions}
-                  page={page}
-                  selectedMonitorIds={selected}
-                />
+                {isAdmin ? (
+                  <>
+                    <Rule />
+                    <StatusPageForm
+                      monitors={monitorOptions}
+                      page={page}
+                      selectedMonitorIds={selected}
+                    />
+                  </>
+                ) : null}
               </Panel>
             );
           })}

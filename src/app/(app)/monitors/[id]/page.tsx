@@ -53,7 +53,8 @@ export default async function MonitorPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ w?: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "admin";
   const { id } = await params;
   const { w } = await searchParams;
 
@@ -345,6 +346,7 @@ export default async function MonitorPage({
             publicUrl={env.publicUrl}
             intervalSec={monitor.intervalSec}
             graceSec={monitor.graceSec}
+            canRotate={isAdmin}
           />
         ) : (
           <Panel inset className="flex flex-col gap-4">
@@ -436,22 +438,26 @@ export default async function MonitorPage({
         </Panel>
       </section>
 
-      {/* ---- danger zone -------------------------------------------------- */}
-      <section className="flex flex-col gap-3">
-        <SectionHeader label="danger zone" />
-        <Panel className="flex flex-wrap items-center justify-between gap-4 border-alarm/25 px-4 py-3">
-          <p className="text-[12px] text-ash">
-            Deleting this monitor also removes its checks, rollups, and incident
-            history. There is no undo.
-          </p>
-          <form action={deleteMonitorAction}>
-            <input type="hidden" name="id" value={monitor.id} />
-            <Button type="submit" variant="danger" size="sm">
-              delete monitor
-            </Button>
-          </form>
-        </Panel>
-      </section>
+      {/* ---- danger zone --------------------------------------------------
+           Admin-only, and hidden rather than disabled for members: a button that
+           silently refuses is worse than one that was never offered. */}
+      {isAdmin ? (
+        <section className="flex flex-col gap-3">
+          <SectionHeader label="danger zone" />
+          <Panel className="flex flex-wrap items-center justify-between gap-4 border-alarm/25 px-4 py-3">
+            <p className="text-[12px] text-ash">
+              Deleting this monitor also removes its checks, rollups, and incident
+              history. There is no undo.
+            </p>
+            <form action={deleteMonitorAction}>
+              <input type="hidden" name="id" value={monitor.id} />
+              <Button type="submit" variant="danger" size="sm">
+                delete monitor
+              </Button>
+            </form>
+          </Panel>
+        </section>
+      ) : null}
     </div>
   );
 }

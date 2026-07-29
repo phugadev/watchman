@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { statusPageItems, statusPages } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 
 export interface StatusPageActionState {
   error?: string;
@@ -42,7 +42,7 @@ export async function createStatusPageAction(
   _prev: StatusPageActionState,
   formData: FormData,
 ): Promise<StatusPageActionState> {
-  await requireUser();
+  await requireAdmin();
 
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return { error: "Give the page a title" };
@@ -93,7 +93,7 @@ export async function updateStatusPageAction(
   _prev: StatusPageActionState,
   formData: FormData,
 ): Promise<StatusPageActionState> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const page = db.select().from(statusPages).where(eq(statusPages.id, id)).get();
   if (!page) return { error: "That status page no longer exists" };
@@ -128,7 +128,7 @@ export async function updateStatusPageAction(
 }
 
 export async function deleteStatusPageAction(formData: FormData): Promise<void> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const page = db.select().from(statusPages).where(eq(statusPages.id, id)).get();
   if (!page) return;
@@ -139,7 +139,7 @@ export async function deleteStatusPageAction(formData: FormData): Promise<void> 
 }
 
 export async function togglePublishedAction(formData: FormData): Promise<void> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const page = db.select().from(statusPages).where(eq(statusPages.id, id)).get();
   if (!page) return;

@@ -8,6 +8,7 @@ import { Panel, Rule, SectionHeader } from "@/components/ui/frame";
 import { MonoLabel } from "@/components/ui/mono";
 import {
   createChannelAction,
+  rotateWebhookSecretAction,
   testChannelAction,
   type ChannelActionState,
 } from "@/lib/notify/actions";
@@ -49,11 +50,12 @@ export function NewChannelForm() {
 
       <form action={action} className="flex flex-col gap-5">
         <FormError>{state.error}</FormError>
-        {state.ok ? (
+        {state.ok && !state.secret ? (
           <p className="border border-live/40 bg-live/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-live">
             Channel created
           </p>
         ) : null}
+        {state.secret ? <SecretReveal secret={state.secret} /> : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Name" htmlFor="ch-name" required>
@@ -155,6 +157,70 @@ export function NewChannelForm() {
         </div>
       </form>
     </Panel>
+  );
+}
+
+/**
+ * One-time display of a generated signing secret.
+ *
+ * Only a masked prefix is ever shown afterwards and nothing reveals the stored value,
+ * so this is the single moment the receiver can be configured. Says so plainly, or
+ * someone navigates away and has to rotate.
+ */
+function SecretReveal({ secret }: { secret: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard can be blocked over plain HTTP; the text stays selectable.
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2.5 border border-amp/40 bg-amp/5 p-4">
+      <MonoLabel tone="amp">signing secret — shown once</MonoLabel>
+      <div className="flex items-center gap-2 border border-hairline-soft bg-void px-3 py-2.5">
+        <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-amp">
+          {secret}
+        </code>
+        <Button type="button" variant="bracket" size="sm" onClick={copy}>
+          {copied ? "copied" : "copy"}
+        </Button>
+      </div>
+      <p className="text-[11px] leading-relaxed text-ash">
+        Your receiver needs this to verify the <code>x-watchman-signature</code>{" "}
+        header. Watchman will not show it again — rotate the channel if you lose it.
+      </p>
+    </div>
+  );
+}
+
+/** Rotate a webhook secret, revealing the replacement once. */
+export function RotateSecretButton({ channelId }: { channelId: string }) {
+  const [state, action] = useActionState(rotateWebhookSecretAction, initial);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <form action={action}>
+        <input type="hidden" name="id" value={channelId} />
+        <RotateSubmit />
+      </form>
+      <FormError>{state.error}</FormError>
+      {state.secret ? <SecretReveal secret={state.secret} /> : null}
+    </div>
+  );
+}
+
+function RotateSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant="bracket" size="sm" disabled={pending}>
+      {pending ? "rotating" : "rotate secret"}
+    </Button>
   );
 }
 

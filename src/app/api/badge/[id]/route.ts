@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { checks, incidents, monitors } from "@/lib/db/schema";
 import { BADGE_HEX, GRADE_HEX, computeGrade } from "@/lib/metrics/grade";
 import { WINDOWS, formatUptime, summarize } from "@/lib/metrics/uptime";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * Embeddable SVG badge.
@@ -80,8 +81,23 @@ export async function GET(
         // Short cache: a badge showing yesterday's uptime is worse than no badge.
         // `stale-while-revalidate` keeps GitHub's proxy from ever blocking on us.
         "cache-control": `public, max-age=${cacheSec}, stale-while-revalidate=600`,
+        // An SVG served same-origin is a script execution context if anything ever
+        // slips past escapeXml. Nothing here can, but these two headers make that a
+        // non-issue rather than a thing to keep re-verifying.
+        "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'",
+        "x-content-type-options": "nosniff",
       },
     });
+
+  // The badge is public and each request aggregates a 24h window, so cap the rate
+  // per monitor. Well-behaved consumers hit the cache; this bounds the rest.
+  const limited = rateLimit(`badge:${id}`, 60, 60_000);
+  if (!limited.ok) {
+    return new Response(null, {
+      status: 429,
+      headers: { "retry-after": String(limited.retryAfterSec) },
+    });
+  }
 
   const monitor = db
     .select({

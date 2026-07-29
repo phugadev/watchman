@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { monitorChannels, monitors } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin, requireUser } from "@/lib/auth/session";
 import { newHeartbeatToken } from "@/lib/ids";
+import { rateLimit } from "@/lib/rate-limit";
 import { checkNow } from "@/lib/scheduler";
 import { rollupMonitorFully } from "@/lib/scheduler/rollup";
 import { monitorFormSchema, parseHeaderLines } from "./schema";
@@ -238,13 +239,24 @@ export async function togglePauseAction(formData: FormData): Promise<void> {
 export async function checkNowAction(formData: FormData): Promise<void> {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id) await checkNow(id);
+  if (!id) return;
+
+  // "Check now" bypasses the interval, so without a cap a held-down button becomes
+  // a way to hammer someone else's endpoint from your server.
+  if (!rateLimit(`checknow:${id}`, 10, 60_000).ok) return;
+
+  await checkNow(id);
   revalidatePath(`/monitors/${id}`);
   revalidatePath("/dashboard");
 }
 
+/**
+ * Deletion cascades to every check, rollup, and incident for this monitor, so it is
+ * irreversible loss of history rather than a config change. Admins only — a role that
+ * gates nothing is worse than no roles at all, because "member" reads as restricted.
+ */
 export async function deleteMonitorAction(formData: FormData): Promise<void> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   // Checks, rollups, incidents, and channel links all cascade from the schema.
   if (id) db.delete(monitors).where(eq(monitors.id, id)).run();
@@ -253,10 +265,11 @@ export async function deleteMonitorAction(formData: FormData): Promise<void> {
   redirect("/monitors");
 }
 
+/** Rotating invalidates a URL that is already deployed in someone's crontab. */
 export async function rotateHeartbeatTokenAction(
   formData: FormData,
 ): Promise<void> {
-  await requireUser();
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const monitor = db.select().from(monitors).where(eq(monitors.id, id)).get();
   if (!monitor || monitor.kind !== "heartbeat") return;

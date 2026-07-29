@@ -20,12 +20,15 @@ export function HeartbeatPanel({
   publicUrl,
   intervalSec,
   graceSec,
+  canRotate = false,
 }: {
   monitorId: string;
   token: string;
   publicUrl: string;
   intervalSec: number;
   graceSec: number;
+  /** Rotating breaks a URL already deployed in someone's crontab — admins only. */
+  canRotate?: boolean;
 }) {
   const url = `${publicUrl}/api/ping/${token}`;
   const [copied, setCopied] = useState<string | null>(null);
@@ -69,12 +72,14 @@ export function HeartbeatPanel({
   return (
     <Panel inset className="flex flex-col gap-5">
       <SectionHeader label="heartbeat url">
-        <form action={rotateHeartbeatTokenAction}>
-          <input type="hidden" name="id" value={monitorId} />
-          <Button type="submit" variant="bracket" size="sm">
-            rotate
-          </Button>
-        </form>
+        {canRotate ? (
+          <form action={rotateHeartbeatTokenAction}>
+            <input type="hidden" name="id" value={monitorId} />
+            <Button type="submit" variant="bracket" size="sm">
+              rotate
+            </Button>
+          </form>
+        ) : null}
       </SectionHeader>
 
       <div className="flex flex-col gap-2">
