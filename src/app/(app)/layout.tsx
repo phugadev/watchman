@@ -31,6 +31,7 @@ export default async function AppLayout({
     { href: "/monitors", label: "Monitors" },
     { href: "/incidents", label: "Incidents", badge: openIncidents },
     { href: "/channels", label: "Alerts" },
+    { href: "/maintenance", label: "Maintenance" },
     { href: "/status-pages", label: "Status" },
   ];
 

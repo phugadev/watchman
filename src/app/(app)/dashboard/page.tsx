@@ -9,6 +9,7 @@ import { MonitorCard } from "@/components/monitors/monitor-card";
 import { GRADE_CAPTION } from "@/lib/metrics/grade";
 import { formatDuration, formatMs, formatUptime } from "@/lib/metrics/uptime";
 import {
+  activeMaintenanceCount,
   fleetSummary,
   listIncidents,
   listMonitorsWithHealth,
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const openIncidents = listIncidents({ status: "open", limit: 5 });
   const unrouted = monitorsWithoutChannels();
   const scheduler = schedulerStatus();
+  const activeMaintenance = activeMaintenanceCount();
 
   if (health.length === 0) {
     return (
@@ -122,6 +124,23 @@ export default function DashboardPage() {
           </span>
         </div>
       </CropFrame>
+
+      {/* ---- active maintenance ------------------------------------------
+           Stated up front, because an operator seeing a quiet dashboard needs to
+           know whether it is quiet or muted. */}
+      {activeMaintenance > 0 ? (
+        <Panel className="flex flex-wrap items-center gap-x-4 gap-y-2 border-violet/30 bg-violet/5 px-4 py-3">
+          <MonoLabel tone="amp">maintenance active</MonoLabel>
+          <p className="min-w-0 flex-1 text-[12px] text-ash">
+            {activeMaintenance === 1
+              ? "A maintenance window is in effect — alerts are being withheld for the monitors it covers."
+              : `${activeMaintenance} maintenance windows are in effect — alerts are being withheld for the monitors they cover.`}
+          </p>
+          <ButtonLink href="/maintenance" variant="bracket" size="sm">
+            review
+          </ButtonLink>
+        </Panel>
+      ) : null}
 
       {/* ---- open incidents --------------------------------------------- */}
       {openIncidents.length > 0 ? (

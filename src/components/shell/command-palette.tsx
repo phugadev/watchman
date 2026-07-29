@@ -50,6 +50,13 @@ export function CommandPalette({
       { id: "nav-monitors", label: "Monitors", group: "Go to", href: "/monitors" },
       { id: "nav-incidents", label: "Incidents", group: "Go to", href: "/incidents" },
       { id: "nav-channels", label: "Alert channels", group: "Go to", href: "/channels" },
+      {
+        id: "nav-maintenance",
+        label: "Maintenance windows",
+        group: "Go to",
+        href: "/maintenance",
+        keywords: "suppress silence deploy planned",
+      },
       { id: "nav-status", label: "Status pages", group: "Go to", href: "/status-pages" },
       { id: "nav-settings", label: "Settings", group: "Go to", href: "/settings" },
       ...(isAdmin
@@ -64,6 +71,13 @@ export function CommandPalette({
         group: "Actions",
         href: "/monitors/new",
         keywords: "create add check http heartbeat",
+      },
+      {
+        id: "act-maintenance",
+        label: "Schedule maintenance",
+        group: "Actions",
+        href: "/maintenance",
+        keywords: "silence suppress mute deploy window planned",
       },
     ];
 

@@ -141,6 +141,23 @@ To report failures explicitly:
 you mark that job alive or failed and nothing else. Rotate it from the monitor page if
 it leaks.
 
+## Maintenance windows
+
+Schedule one before a deploy and Watchman stays quiet for the duration instead of
+paging whoever is on call. Two modes:
+
+| Mode | Behaviour |
+| --- | --- |
+| **Suppress alerts** (default) | Keeps probing and recording, sends nothing. The incident still opens, is marked suppressed, and its timeline notes which window silenced it — so the post-mortem is intact. |
+| **Pause checks** | Stops probing entirely. For maintenance where the service is deliberately offline and the failure data would be noise. |
+
+Suppress is almost always the right choice: you want the data, you just don't want the
+page. An active window is called out on the dashboard, because an operator looking at a
+quiet dashboard needs to know whether it is quiet or muted.
+
+Windows can be ended early, which sets the end to now rather than deleting the record —
+the reason alerts were withheld for that period stays readable afterwards.
+
 ## Alerting
 
 ### Webhooks
@@ -235,6 +252,7 @@ instrumentation.ts          boots the scheduler once per server process
        ├─ rollup.ts         hourly + daily aggregates
        └─ retention.ts      prunes raw checks, keeps the rollups
 lib/events/bus.ts           in-process pub/sub → SSE → the live tape
+lib/maintenance             window scheduling; phase derived from the clock, never stored
 lib/db                      Drizzle schema, WAL SQLite, migrations on boot
 ```
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   channels,
@@ -6,6 +6,7 @@ import {
   incidentEvents,
   incidents,
   invites,
+  maintenanceMonitors,
   maintenanceWindows,
   monitorChannels,
   monitors,
@@ -16,6 +17,7 @@ import {
   users,
   type Monitor,
 } from "@/lib/db/schema";
+import { maintenancePhase } from "@/lib/maintenance/phase";
 import { GRADE_CUTOFFS, computeGrade, type Grade } from "@/lib/metrics/grade";
 import {
   WINDOWS,
@@ -564,13 +566,69 @@ export function listPendingInvites() {
     .all();
 }
 
-export function listMaintenanceWindows() {
-  return db
+/**
+ * Maintenance windows with their affected monitors and current phase.
+ *
+ * Phase is derived rather than stored, so it can never drift out of sync with the
+ * clock — a status column would need a job to keep it honest.
+ */
+export function listMaintenanceWindows(now = new Date()) {
+  const windows = db
     .select()
     .from(maintenanceWindows)
     .orderBy(desc(maintenanceWindows.startsAt))
     .limit(50)
     .all();
+
+  if (windows.length === 0) return [];
+
+  const links = db
+    .select({
+      windowId: maintenanceMonitors.windowId,
+      monitorId: monitors.id,
+      monitorName: monitors.name,
+    })
+    .from(maintenanceMonitors)
+    .innerJoin(monitors, eq(monitors.id, maintenanceMonitors.monitorId))
+    .where(
+      inArray(
+        maintenanceMonitors.windowId,
+        windows.map((w) => w.id),
+      ),
+    )
+    .all();
+
+  const byWindow = new Map<string, { id: string; name: string }[]>();
+  for (const l of links) {
+    const list = byWindow.get(l.windowId);
+    const entry = { id: l.monitorId, name: l.monitorName };
+    if (list) list.push(entry);
+    else byWindow.set(l.windowId, [entry]);
+  }
+
+  return windows.map((window) => ({
+    window,
+    monitors: byWindow.get(window.id) ?? [],
+    // Shared with the engine's boundary semantics via one helper, so the badge can
+    // never say "finished" while alerts are still being withheld.
+    phase: maintenancePhase(window.startsAt, window.endsAt, now),
+  }));
+}
+
+/** Windows suppressing or pausing anything right now, for the dashboard banner. */
+export function activeMaintenanceCount(now = new Date()): number {
+  return (
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(maintenanceWindows)
+      .where(
+        and(
+          lte(maintenanceWindows.startsAt, now),
+          gte(maintenanceWindows.endsAt, now),
+        ),
+      )
+      .get()?.n ?? 0
+  );
 }
 
 export function listRecentDeliveries(limit = 50) {
