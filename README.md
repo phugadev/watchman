@@ -8,7 +8,7 @@ incident timelines, and public status pages — in one container, with no extern
 ```
 docker run -d -p 3000:3000 -v watchman:/data \
   -e WATCHMAN_SECRET=$(openssl rand -hex 32) \
-  ghcr.io/OWNER/watchman:latest
+  ghcr.io/phugadev/watchman:latest
 ```
 
 </div>
@@ -63,7 +63,7 @@ docker run -d --name watchman \
   -v watchman-data:/data \
   -e WATCHMAN_SECRET \
   -e WATCHMAN_URL=https://watch.example.com \
-  ghcr.io/OWNER/watchman:latest
+  ghcr.io/phugadev/watchman:latest
 ```
 
 Open `http://localhost:3000`. The first visit creates the admin account; after that
@@ -75,6 +75,10 @@ Open `http://localhost:3000`. The first visit creates the admin account; after t
 cp .env.example .env      # then set WATCHMAN_SECRET
 docker compose up -d
 ```
+
+This builds from source by default, so it works straight from a clone with no registry
+involved. To run a published image instead, uncomment the `image:` line in
+`docker-compose.yml` and drop `build: .`.
 
 ### From source
 

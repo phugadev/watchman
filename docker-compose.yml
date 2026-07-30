@@ -1,7 +1,7 @@
 services:
   watchman:
     build: .
-    # image: ghcr.io/OWNER/watchman:latest   # uncomment to use a published image
+    # image: ghcr.io/phugadev/watchman:latest   # uncomment to use a published image
     container_name: watchman
     restart: unless-stopped
     ports:
