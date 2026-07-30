@@ -11,6 +11,8 @@ import {
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { Code, KeyValue, MonoLabel, Readout } from "@/components/ui/mono";
 import { StatusPill, UptimeTape } from "@/components/ui/status";
+import { TagList } from "@/components/ui/tag";
+import { readTags } from "@/lib/monitors/tags";
 import { LatencyChart } from "@/components/charts/latency-chart";
 import { BudgetBar, GradeBreakdown } from "@/components/charts/budget-bar";
 import { HeartbeatPanel } from "@/components/monitors/heartbeat-panel";
@@ -113,6 +115,10 @@ export default async function MonitorPage({
                 every {formatDuration(monitor.intervalSec * 1000)}
               </MonoLabel>
             </div>
+            <TagList
+              tags={readTags(monitor.tags)}
+              hrefFor={(t) => `/monitors?tag=${encodeURIComponent(t)}`}
+            />
             {monitor.description ? (
               <p className="max-w-xl text-[13px] leading-relaxed text-ash">
                 {monitor.description}

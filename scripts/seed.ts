@@ -26,6 +26,7 @@ import {
 } from "../src/lib/db/schema.ts";
 import { hashPassword } from "../src/lib/auth/password.ts";
 import { newHeartbeatToken } from "../src/lib/ids.ts";
+import { serialiseTags } from "../src/lib/monitors/tags.ts";
 import { rollupMonitorFully } from "../src/lib/scheduler/rollup.ts";
 
 const SEED_EMAIL = "dev@watchman.local";
@@ -60,6 +61,7 @@ interface Plan {
   /** Scripted outages as [daysAgo, durationMinutes]. */
   outages?: [number, number][];
   sloTargetPct?: number;
+  tags?: string[];
   expectedStatus?: string;
   keyword?: string;
 }
@@ -67,6 +69,7 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     name: "Marketing site",
+    tags: ["prod", "web"],
     description: "Public landing page behind the CDN.",
     kind: "http",
     target: "https://example.com",
@@ -78,6 +81,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "API — production",
+    tags: ["prod", "api", "tier:1"],
     description: "Core REST API health endpoint.",
     kind: "http",
     target: "https://api.example.com/health",
@@ -95,6 +99,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Checkout service",
+    tags: ["prod", "api", "tier:1", "payments"],
     description: "Payment flow — the one that costs money when it breaks.",
     kind: "http",
     target: "https://checkout.example.com/healthz",
@@ -114,6 +119,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Postgres primary",
+    tags: ["prod", "database"],
     kind: "tcp",
     target: "db.internal:5432",
     intervalSec: 60,
@@ -124,6 +130,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Redis cache",
+    tags: ["prod", "cache"],
     kind: "tcp",
     target: "cache.internal:6379",
     intervalSec: 60,
@@ -133,6 +140,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Edge gateway",
+    tags: ["network"],
     kind: "ping",
     target: "1.1.1.1",
     intervalSec: 120,
@@ -142,6 +150,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "TLS — example.com",
+    tags: ["prod", "web"],
     description: "Certificate expiry watch.",
     kind: "ssl",
     target: "example.com",
@@ -152,6 +161,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Nightly backup",
+    tags: ["jobs", "backup"],
     description: "Dead man's switch for the 03:00 pg_dump.",
     kind: "heartbeat",
     target: "",
@@ -163,6 +173,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Queue worker",
+    tags: ["prod", "jobs"],
     description: "Pings every 5 minutes while draining jobs.",
     kind: "heartbeat",
     target: "",
@@ -235,6 +246,7 @@ async function main() {
         expectedStatus: plan.expectedStatus ?? "2xx",
         keyword: plan.keyword ?? null,
         sloTargetPct: plan.sloTargetPct ?? 99.9,
+        tags: serialiseTags(plan.tags ?? []),
         heartbeatToken: plan.kind === "heartbeat" ? newHeartbeatToken() : null,
         createdAt: new Date(now - HISTORY_DAYS * DAY),
         createdBy: admin.id,
@@ -331,7 +343,6 @@ async function main() {
         .values({
           monitorId: monitor.id,
           status: "resolved",
-          severity: "down",
           startedAt: new Date(start),
           resolvedAt: new Date(end),
           cause:

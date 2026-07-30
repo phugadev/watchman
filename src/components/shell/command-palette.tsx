@@ -12,6 +12,7 @@ interface MonitorRef {
   name: string;
   kind: string;
   status: MonitorStatus;
+  tags: string[];
 }
 
 interface Command {
@@ -86,7 +87,8 @@ export function CommandPalette({
       label: m.name,
       group: "Monitors",
       href: `/monitors/${m.id}`,
-      keywords: m.kind,
+      // Tags join the haystack, so typing "prod" surfaces everything tagged prod.
+      keywords: [m.kind, ...m.tags].join(" "),
       status: m.status,
     }));
 

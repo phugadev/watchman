@@ -3,6 +3,8 @@ import { cn } from "@/lib/cn";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { MonoLabel } from "@/components/ui/mono";
 import { StatusDot, STATUS_LABEL } from "@/components/ui/status";
+import { TagList } from "@/components/ui/tag";
+import { readTags } from "@/lib/monitors/tags";
 import { KIND_LABEL } from "@/lib/probe";
 import { formatAgo, formatMs, formatUptime } from "@/lib/metrics/uptime";
 import type { MonitorHealth } from "@/lib/queries";
@@ -87,6 +89,10 @@ export function MonitorCard({ health }: { health: MonitorHealth }) {
           }
         />
       </div>
+
+      {/* Not links here — the whole card is already one, and a nested anchor would be
+          invalid markup. The monitors list is where tags are clickable. */}
+      <TagList tags={readTags(monitor.tags)} />
 
       {monitor.lastError && status !== "paused" ? (
         <p className="truncate border-l-2 border-alarm/40 pl-2 font-mono text-[10px] text-alarm">

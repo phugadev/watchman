@@ -246,7 +246,6 @@ export async function recordCheck(
             .values({
               monitorId: monitor.id,
               status: "open",
-              severity: "down",
               startedAt: now,
               cause: effect.cause,
               failedChecks: effect.failedChecks,

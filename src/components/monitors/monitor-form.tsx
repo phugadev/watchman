@@ -18,6 +18,7 @@ import {
   TARGET_PLACEHOLDER,
   formatHeaderLines,
 } from "@/lib/monitors/schema";
+import { formatTags } from "@/lib/monitors/tags";
 import { MONITOR_KINDS, type Monitor, type MonitorKind } from "@/lib/db/schema";
 
 const KIND_LABEL: Record<MonitorKind, string> = {
@@ -115,6 +116,22 @@ export function MonitorForm({
             defaultValue={monitor?.description ?? ""}
             placeholder="Core REST API health endpoint"
             maxLength={500}
+          />
+        </Field>
+
+        <Field
+          label="Tags"
+          htmlFor="tags"
+          hint="Comma separated. Used to filter the monitor list — env:prod, team:payments, tier:1."
+          error={err("tags")}
+        >
+          <Input
+            id="tags"
+            name="tags"
+            defaultValue={formatTags(monitor?.tags ?? null)}
+            placeholder="prod, api, tier:1"
+            maxLength={400}
+            spellCheck={false}
           />
         </Field>
 
