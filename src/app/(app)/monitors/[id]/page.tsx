@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/frame";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { Code, KeyValue, MonoLabel, Readout } from "@/components/ui/mono";
-import { StatusPill, UptimeTape } from "@/components/ui/status";
+import { StatusPill, UptimeTape, UptimeTapeLegend } from "@/components/ui/status";
 import { TagList } from "@/components/ui/tag";
 import { readTags } from "@/lib/monitors/tags";
 import { LatencyChart } from "@/components/charts/latency-chart";
@@ -36,6 +36,30 @@ import { KIND_LABEL } from "@/lib/probe";
 import { getMonitorDetail } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Per-day text for the tape.
+ *
+ * "Degraded, 100% uptime" reads as a contradiction, even though both halves are true
+ * under Watchman's model — a degraded check answered, it was just slow, so it counts as
+ * available. Naming the slow and failed checks explicitly resolves it, and is more useful
+ * than a percentage on its own.
+ */
+function tapeDetail(d: {
+  uptimePct: number | null;
+  total: number;
+  degradedCount: number;
+  downCount: number;
+}): string {
+  if (d.uptimePct === null) return "no data";
+  const parts = [`${formatUptime(d.uptimePct)} available`];
+  if (d.downCount > 0)
+    parts.push(`${d.downCount} failed ${d.downCount === 1 ? "check" : "checks"}`);
+  if (d.degradedCount > 0)
+    parts.push(`${d.degradedCount} slow ${d.degradedCount === 1 ? "check" : "checks"}`);
+  return parts.join(", ");
+}
+
 
 export async function generateMetadata({
   params,
@@ -259,16 +283,14 @@ export default async function MonitorPage({
                 month: "short",
                 day: "numeric",
               }),
-              detail:
-                d.uptimePct === null
-                  ? "no data"
-                  : `${formatUptime(d.uptimePct)} over ${d.total} checks`,
+              detail: tapeDetail(d),
             }))}
           />
           <div className="flex justify-between font-mono text-[9px] uppercase tracking-[0.16em] text-slate">
             <span>90 days ago</span>
             <span>today</span>
           </div>
+          <UptimeTapeLegend className="pt-1" />
         </Panel>
       </section>
 

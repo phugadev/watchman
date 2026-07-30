@@ -54,6 +54,12 @@ attention. Nothing in the UI is coloured decoratively, and adding a sixth accent
 be pushed back on. Squares, not rounded corners; radius is reserved for pills and
 avatars.
 
+**Colour is never the only carrier of meaning.** Roughly 1 in 12 men has a red-green
+deficiency, and the status page is read by the public rather than by colleagues. Any state
+distinguished by colour needs a second cue — a shape, a pattern, or text. The uptime tape
+pairs its colours with patterns for exactly this reason; check a change in greyscale
+before assuming it reads.
+
 **Never leak internal detail onto a public status page.** A raw `ECONNREFUSED` tells a
 customer nothing and describes your topology. Status pages say "we are investigating".
 

@@ -112,6 +112,40 @@ body {
   );
 }
 
+/* --------------------------------------------------------------------------
+ * Uptime tape textures
+ *
+ * Colour alone must not carry the status (WCAG 1.4.1). Roughly 1 in 12 men has a
+ * red-green deficiency, and the status page is the one surface where the audience is
+ * the public rather than a colleague — mint and red are close to indistinguishable to
+ * them, which would turn "were you down yesterday?" into a guess.
+ *
+ * Each non-operational state therefore carries a shape cue as well. Both patterns are
+ * sized to stay legible at the ~8px bar width a 90-day tape produces on a phone.
+ * ---------------------------------------------------------------------- */
+
+/* Degraded — a band knocked out of the middle. */
+.tape-degraded {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 38%,
+    var(--color-void) 38%,
+    var(--color-void) 62%,
+    transparent 62%
+  );
+}
+
+/* Down — dense diagonal stripes, distinct from degraded at a glance. */
+.tape-down {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-void) 0px,
+    var(--color-void) 1.5px,
+    transparent 1.5px,
+    transparent 4px
+  );
+}
+
 /* Dotted rule — the workhorse divider. */
 .rule-dotted {
   border-top: 1px dashed var(--color-hairline);
