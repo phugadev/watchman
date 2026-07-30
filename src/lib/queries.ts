@@ -508,6 +508,70 @@ export function getIncident(id: string) {
   return { ...row, timeline, deliveries, checks: window };
 }
 
+export interface PublicIncident {
+  id: string;
+  monitorId: string;
+  startedAt: Date;
+  resolvedAt: Date | null;
+  durationMs: number | null;
+  acknowledged: boolean;
+}
+
+/**
+ * Resolved incidents for a status page, newest first.
+ *
+ * Deliberately returns no cause, no error text, and no check detail. A raw
+ * `ECONNREFUSED` tells a customer nothing and describes your topology; the page renders
+ * its own plain-language copy from these fields alone, so there is no path by which
+ * internal text could reach it.
+ *
+ * Suppressed incidents are excluded. They exist because someone scheduled maintenance,
+ * and publishing "we were down" for a planned window you already announced is worse than
+ * silence.
+ */
+export function listPublicIncidentHistory({
+  monitorIds,
+  days = 90,
+  limit = 20,
+}: {
+  monitorIds: readonly string[];
+  days?: number;
+  limit?: number;
+}): PublicIncident[] {
+  if (monitorIds.length === 0) return [];
+
+  return db
+    .select({
+      id: incidents.id,
+      monitorId: incidents.monitorId,
+      startedAt: incidents.startedAt,
+      resolvedAt: incidents.resolvedAt,
+      acknowledgedAt: incidents.acknowledgedAt,
+    })
+    .from(incidents)
+    .where(
+      and(
+        inArray(incidents.monitorId, [...monitorIds]),
+        eq(incidents.status, "resolved"),
+        eq(incidents.suppressed, false),
+        gte(incidents.startedAt, new Date(Date.now() - days * 86_400_000)),
+      ),
+    )
+    .orderBy(desc(incidents.startedAt))
+    .limit(limit)
+    .all()
+    .map((r) => ({
+      id: r.id,
+      monitorId: r.monitorId,
+      startedAt: r.startedAt,
+      resolvedAt: r.resolvedAt,
+      durationMs: r.resolvedAt
+        ? r.resolvedAt.getTime() - r.startedAt.getTime()
+        : null,
+      acknowledged: r.acknowledgedAt !== null,
+    }));
+}
+
 export function countOpenIncidents(): number {
   return (
     db

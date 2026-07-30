@@ -18,7 +18,11 @@ import {
   type MonitorStatus,
 } from "@/lib/metrics/uptime";
 import { getCurrentUser } from "@/lib/auth/session";
-import { dailyTape, getStatusPageBySlug } from "@/lib/queries";
+import {
+  dailyTape,
+  getStatusPageBySlug,
+  listPublicIncidentHistory,
+} from "@/lib/queries";
 
 /**
  * The public status page.
@@ -112,6 +116,27 @@ export default async function PublicStatusPage({
     .orderBy(desc(incidents.startedAt))
     .all()
     .filter((r) => services.some((s) => s.id === r.incident.monitorId));
+
+  const history = listPublicIncidentHistory({
+    monitorIds: services.map((s) => s.id),
+    days: page.historyDays,
+  });
+
+  // Grouped by local day, which is how a reader scans a timeline — "what happened on
+  // Tuesday" rather than a flat list of timestamps.
+  const historyByDay = [
+    ...history
+      .reduce<Map<number, typeof history>>((acc, incident) => {
+        const day = new Date(incident.startedAt);
+        day.setHours(0, 0, 0, 0);
+        const key = day.getTime();
+        const list = acc.get(key);
+        if (list) list.push(incident);
+        else acc.set(key, [incident]);
+        return acc;
+      }, new Map())
+      .entries(),
+  ].sort((a, b) => b[0] - a[0]);
 
   const anyDown = services.some((s) => s.status === "down");
   const anyDegraded = services.some((s) => s.status === "degraded");
@@ -289,6 +314,73 @@ export default async function PublicStatusPage({
           </section>
         ))
       )}
+
+      {/* ---- past incidents ----------------------------------------------
+           The credibility mechanism of a status page. A page that only ever shows
+           "all systems operational" is indistinguishable from one that is broken;
+           publishing the outages you already recovered from is what makes the green
+           mean anything. Grouped by day, the way a reader thinks about it. */}
+      {history.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <MonoLabel>past incidents</MonoLabel>
+          <Panel className="divide-y divide-hairline-soft">
+            {historyByDay.map(([day, entries]) => (
+              <div key={day} className="flex flex-col gap-2.5 px-4 py-3.5">
+                <MonoLabel tone="slate">
+                  {new Date(Number(day)).toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </MonoLabel>
+
+                {entries.map((incident) => {
+                  const service = services.find((s) => s.id === incident.monitorId);
+                  return (
+                    <div
+                      key={incident.id}
+                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+                    >
+                      <span className="size-1.5 shrink-0 bg-live" aria-hidden />
+                      <span className="text-[13px] text-bone">
+                        {service?.name ?? "Service"}
+                      </span>
+                      {/* Same rule as active incidents: duration and timing only,
+                          never the internal cause. */}
+                      <span className="text-[12px] text-ash">
+                        recovered after{" "}
+                        {incident.durationMs === null
+                          ? "an outage"
+                          : formatDuration(incident.durationMs)}
+                      </span>
+                      <span className="ml-auto shrink-0 tnum font-mono text-[10px] text-slate">
+                        {incident.startedAt.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {incident.resolvedAt
+                          ? ` → ${incident.resolvedAt.toLocaleTimeString(undefined, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}`
+                          : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </Panel>
+        </section>
+      ) : openIncidents.length === 0 ? (
+        // Saying so beats an absent section, which reads as "history not implemented".
+        <Panel inset>
+          <p className="py-5 text-center text-[12px] text-slate">
+            No incidents in the last {page.historyDays} days.
+          </p>
+        </Panel>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonoLabel tone="slate">
