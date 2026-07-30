@@ -187,7 +187,7 @@ function SecretReveal({ secret }: { secret: string }) {
         <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-amp">
           {secret}
         </code>
-        <Button type="button" variant="bracket" size="sm" onClick={copy}>
+        <Button type="button" variant="bracket" size="sm" onClick={() => void copy()}>
           {copied ? "copied" : "copy"}
         </Button>
       </div>

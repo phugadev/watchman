@@ -32,6 +32,16 @@ import {
 } from "@/lib/metrics/uptime";
 import { DAY_MS, HOUR_MS, bucketStart } from "@/lib/scheduler/rollup";
 
+/** One point on the monitor detail chart. Shared by the raw and rollup branches. */
+export interface SeriesPoint {
+  at: number;
+  latencyMs: number | null;
+  minMs: number | null;
+  maxMs: number | null;
+  status: MonitorStatus;
+  total: number;
+}
+
 /** A monitor plus everything the dashboard renders next to it. */
 export interface MonitorHealth {
   monitor: Monitor;
@@ -218,7 +228,7 @@ export function listMonitorsWithHealth(tapeSize = 40): MonitorHealth[] {
       summary24h,
       // A monitor with no data yet has nothing to grade; showing F would libel a
       // check that has simply not run.
-      grade: summary24h.total === 0 ? ("S" as Grade) : graded.grade,
+      grade: summary24h.total === 0 ? "S" : graded.grade,
       gradeScore: graded.score,
       incidents30d,
       openIncidentId: openMap.get(monitor.id) ?? null,
@@ -271,18 +281,24 @@ export function getMonitorDetail(id: string, windowKey: WindowKey = "24h") {
         )
         .orderBy(rollups.startedAt)
         .all()
-        .map((r) => ({
-          at: r.at.getTime(),
-          latencyMs: r.p95Ms ?? r.avgMs ?? null,
-          minMs: r.minMs,
-          maxMs: r.maxMs,
-          status: (r.downCount > 0
-            ? "down"
-            : r.degradedCount > 0
-              ? "degraded"
-              : "up") as MonitorStatus,
-          total: r.total,
-        }))
+        .map(
+          (r): SeriesPoint => ({
+            at: r.at.getTime(),
+            latencyMs: r.p95Ms ?? r.avgMs ?? null,
+            minMs: r.minMs,
+            maxMs: r.maxMs,
+            // A bucket is down if anything in it failed, degraded if anything was
+            // slow, otherwise up — the pessimistic reading, so an hour containing one
+            // outage never renders as healthy.
+            status:
+              r.downCount > 0
+                ? "down"
+                : r.degradedCount > 0
+                  ? "degraded"
+                  : "up",
+            total: r.total,
+          }),
+        )
     : db
         .select({
           at: checks.at,
@@ -293,14 +309,19 @@ export function getMonitorDetail(id: string, windowKey: WindowKey = "24h") {
         .where(and(eq(checks.monitorId, id), gte(checks.at, since)))
         .orderBy(checks.at)
         .all()
-        .map((r) => ({
-          at: r.at.getTime(),
-          latencyMs: r.latencyMs,
-          minMs: null,
-          maxMs: null,
-          status: r.status as MonitorStatus,
-          total: 1,
-        }));
+        .map(
+          (r): SeriesPoint => ({
+            at: r.at.getTime(),
+            latencyMs: r.latencyMs,
+            minMs: null,
+            maxMs: null,
+            // Annotating the return type rather than asserting the property: the
+            // assertion read as unnecessary to the linter but was load-bearing for
+            // tsc, since the column's union widens to `string` through the builder.
+            status: r.status,
+            total: 1,
+          }),
+        );
 
   const raw = db
     .select({ ok: checks.ok, latencyMs: checks.latencyMs })

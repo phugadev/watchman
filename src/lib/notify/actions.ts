@@ -8,6 +8,7 @@ import { channels, CHANNEL_KINDS, type ChannelKind } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
 import { testChannel } from "./index";
 import { telegramConfigSchema, webhookConfigSchema } from "./types";
+import { formBool, formString, formTrimmed } from "@/lib/forms";
 
 export interface ChannelActionState {
   error?: string;
@@ -30,8 +31,8 @@ export async function createChannelAction(
 ): Promise<ChannelActionState> {
   await requireAdmin();
 
-  const name = String(formData.get("name") ?? "").trim();
-  const kind = String(formData.get("kind") ?? "") as ChannelKind;
+  const name = formTrimmed(formData, "name");
+  const kind = formString(formData, "kind") as ChannelKind;
 
   if (!name) return { error: "Give the channel a name" };
   if (!CHANNEL_KINDS.includes(kind)) return { error: "Pick a channel type" };
@@ -44,7 +45,7 @@ export async function createChannelAction(
     // is a secret the browser's history remembers.
     generatedSecret = randomBytes(24).toString("base64url");
     const parsed = webhookConfigSchema.safeParse({
-      url: String(formData.get("url") ?? "").trim(),
+      url: formTrimmed(formData, "url"),
       secret: generatedSecret,
     });
     if (!parsed.success) {
@@ -53,9 +54,9 @@ export async function createChannelAction(
     config = parsed.data;
   } else {
     const parsed = telegramConfigSchema.safeParse({
-      botToken: String(formData.get("botToken") ?? "").trim(),
-      chatId: String(formData.get("chatId") ?? "").trim(),
-      silent: formData.get("silent") === "on",
+      botToken: formTrimmed(formData, "botToken"),
+      chatId: formTrimmed(formData, "chatId"),
+      silent: formBool(formData, "silent"),
     });
     if (!parsed.success) {
       return {
@@ -92,7 +93,7 @@ export async function rotateWebhookSecretAction(
   formData: FormData,
 ): Promise<ChannelActionState> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
 
   const channel = db.select().from(channels).where(eq(channels.id, id)).get();
   if (!channel || channel.kind !== "webhook") {
@@ -125,7 +126,7 @@ export async function testChannelAction(
   formData: FormData,
 ): Promise<ChannelActionState> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (!id) return { error: "Missing channel" };
 
   const result = await testChannel(id);
@@ -143,7 +144,7 @@ export async function testChannelAction(
 
 export async function toggleChannelAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const channel = db.select().from(channels).where(eq(channels.id, id)).get();
   if (!channel) return;
 
@@ -156,7 +157,7 @@ export async function toggleChannelAction(formData: FormData): Promise<void> {
 
 export async function deleteChannelAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   // monitor_channels rows cascade from the schema.
   if (id) db.delete(channels).where(eq(channels.id, id)).run();
   revalidatePath("/channels");

@@ -5,7 +5,6 @@ import { MonoLabel } from "@/components/ui/mono";
 import { formatDuration } from "@/lib/metrics/uptime";
 import { KIND_LABEL } from "@/lib/probe";
 import { listIncidents } from "@/lib/queries";
-import type { MonitorKind } from "@/lib/db/schema";
 
 export const metadata: Metadata = { title: "Incidents" };
 export const dynamic = "force-dynamic";
@@ -96,7 +95,7 @@ export default async function IncidentsPage({
                 </span>
 
                 <MonoLabel tone="slate" className="hidden w-20 shrink-0 sm:block">
-                  {KIND_LABEL[monitorKind as MonitorKind]}
+                  {KIND_LABEL[monitorKind]}
                 </MonoLabel>
 
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ash">

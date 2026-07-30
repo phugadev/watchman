@@ -28,20 +28,25 @@ function describeConfig(kind: string, raw: string): { label: string; value: stri
     return [{ label: "config", value: "unreadable" }];
   }
 
+  // The blob is hand-editable text in SQLite, so a field could be any JSON type.
+  // String() on an object would render "[object Object]" as though it were the value.
+  const str = (v: unknown, fallback = "—") =>
+    typeof v === "string" ? v : fallback;
+
   if (kind === "webhook") {
     return [
-      { label: "endpoint", value: String(parsed.url ?? "—") },
+      { label: "endpoint", value: str(parsed.url) },
       // Only a prefix: enough to tell two channels apart, useless to an attacker.
       {
         label: "signing secret",
-        value: `${String(parsed.secret ?? "").slice(0, 6)}${"•".repeat(12)}`,
+        value: `${str(parsed.secret, "").slice(0, 6)}${"•".repeat(12)}`,
       },
     ];
   }
 
   return [
-    { label: "bot", value: maskBotToken(String(parsed.botToken ?? "")) },
-    { label: "chat", value: String(parsed.chatId ?? "—") },
+    { label: "bot", value: maskBotToken(str(parsed.botToken, "")) },
+    { label: "chat", value: str(parsed.chatId) },
   ];
 }
 

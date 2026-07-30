@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { statusPageItems, statusPages } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
+import { formString, formStrings, formTrimmed } from "@/lib/forms";
 
 export interface StatusPageActionState {
   error?: string;
@@ -44,10 +45,10 @@ export async function createStatusPageAction(
 ): Promise<StatusPageActionState> {
   await requireAdmin();
 
-  const title = String(formData.get("title") ?? "").trim();
+  const title = formTrimmed(formData, "title");
   if (!title) return { error: "Give the page a title" };
 
-  const slug = slugify(String(formData.get("slug") ?? "") || title);
+  const slug = slugify(formString(formData, "slug") || title);
   if (!slug) return { error: "That title produces an empty URL — set a slug manually" };
   if (RESERVED.has(slug)) return { error: `"${slug}" is reserved — pick another slug` };
 
@@ -63,7 +64,7 @@ export async function createStatusPageAction(
     .values({
       slug,
       title,
-      description: String(formData.get("description") ?? "").trim() || null,
+      description: formTrimmed(formData, "description") || null,
       published: formData.get("published") !== null,
       showGrades: formData.get("showGrades") !== null,
       showLatency: formData.get("showLatency") !== null,
@@ -71,7 +72,7 @@ export async function createStatusPageAction(
     .returning({ id: statusPages.id })
     .get();
 
-  const monitorIds = formData.getAll("monitorIds").map(String);
+  const monitorIds = formStrings(formData, "monitorIds");
   if (monitorIds.length > 0) {
     db.insert(statusPageItems)
       .values(
@@ -94,17 +95,17 @@ export async function updateStatusPageAction(
   formData: FormData,
 ): Promise<StatusPageActionState> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const page = db.select().from(statusPages).where(eq(statusPages.id, id)).get();
   if (!page) return { error: "That status page no longer exists" };
 
-  const title = String(formData.get("title") ?? "").trim();
+  const title = formTrimmed(formData, "title");
   if (!title) return { error: "Give the page a title" };
 
   db.update(statusPages)
     .set({
       title,
-      description: String(formData.get("description") ?? "").trim() || null,
+      description: formTrimmed(formData, "description") || null,
       published: formData.get("published") !== null,
       showGrades: formData.get("showGrades") !== null,
       showLatency: formData.get("showLatency") !== null,
@@ -114,7 +115,7 @@ export async function updateStatusPageAction(
     .run();
 
   // Replace the item set wholesale — simpler than diffing, and the lists are tiny.
-  const monitorIds = formData.getAll("monitorIds").map(String);
+  const monitorIds = formStrings(formData, "monitorIds");
   db.delete(statusPageItems).where(eq(statusPageItems.pageId, id)).run();
   if (monitorIds.length > 0) {
     db.insert(statusPageItems)
@@ -129,7 +130,7 @@ export async function updateStatusPageAction(
 
 export async function deleteStatusPageAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const page = db.select().from(statusPages).where(eq(statusPages.id, id)).get();
   if (!page) return;
 
@@ -140,7 +141,7 @@ export async function deleteStatusPageAction(formData: FormData): Promise<void> 
 
 export async function togglePublishedAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const page = db.select().from(statusPages).where(eq(statusPages.id, id)).get();
   if (!page) return;
 

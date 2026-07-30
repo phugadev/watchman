@@ -5,6 +5,7 @@ import { eq, lt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { maintenanceMonitors, maintenanceWindows } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/session";
+import { formString, formStrings, formTrimmed } from "@/lib/forms";
 
 export interface MaintenanceActionState {
   error?: string;
@@ -23,20 +24,20 @@ export async function createMaintenanceAction(
 ): Promise<MaintenanceActionState> {
   const user = await requireAdmin();
 
-  const title = String(formData.get("title") ?? "").trim();
+  const title = formTrimmed(formData, "title");
   if (!title) return { error: "Give the window a title" };
 
   // datetime-local submits wall-clock time with no zone, which `new Date` reads as
   // local — the same clock the person filling in the form is looking at.
-  const startsAt = new Date(String(formData.get("startsAt") ?? ""));
-  const endsAt = new Date(String(formData.get("endsAt") ?? ""));
+  const startsAt = new Date(formString(formData, "startsAt"));
+  const endsAt = new Date(formString(formData, "endsAt"));
 
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return { error: "Enter both a start and an end time" };
   }
   if (endsAt <= startsAt) return { error: "The end must come after the start" };
 
-  const monitorIds = formData.getAll("monitorIds").map(String);
+  const monitorIds = formStrings(formData, "monitorIds");
   if (monitorIds.length === 0) {
     // A window covering nothing silently does nothing, which is worse than an error.
     return { error: "Select at least one monitor" };
@@ -52,7 +53,7 @@ export async function createMaintenanceAction(
     .insert(maintenanceWindows)
     .values({
       title,
-      notes: String(formData.get("notes") ?? "").trim() || null,
+      notes: formTrimmed(formData, "notes") || null,
       startsAt,
       endsAt,
       suppressAlerts,
@@ -74,7 +75,7 @@ export async function createMaintenanceAction(
 
 export async function deleteMaintenanceAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   // maintenance_monitors rows cascade from the schema.
   if (id) db.delete(maintenanceWindows).where(eq(maintenanceWindows.id, id)).run();
   revalidatePath("/maintenance");
@@ -90,7 +91,7 @@ export async function deleteMaintenanceAction(formData: FormData): Promise<void>
  */
 export async function endMaintenanceNowAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (!id) return;
 
   const window = db

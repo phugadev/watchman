@@ -80,7 +80,7 @@ export function InviteCreator() {
               type="button"
               variant="bracket"
               size="sm"
-              onClick={() => copy(state.inviteUrl!)}
+              onClick={() => void copy(state.inviteUrl!)}
             >
               {copied ? "copied" : "copy"}
             </Button>

@@ -21,6 +21,7 @@ import {
   needsSetup,
   requireAdmin,
 } from "./session";
+import { formString, formTrimmed } from "@/lib/forms";
 
 export interface ActionState {
   error?: string;
@@ -59,9 +60,9 @@ export async function setupAction(
   // Guard against a race: two browsers on /setup must not both create an admin.
   if (!needsSetup()) return { error: "Watchman is already set up" };
 
-  const name = String(formData.get("name") ?? "").trim();
+  const name = formTrimmed(formData, "name");
   const emailResult = emailSchema.safeParse(formData.get("email"));
-  const password = String(formData.get("password") ?? "");
+  const password = formString(formData, "password");
 
   if (!name) return { error: "Name is required" };
   if (!emailResult.success) {
@@ -105,10 +106,10 @@ export async function loginAction(
     };
   }
 
-  const email = String(formData.get("email") ?? "")
+  const email = formString(formData, "email")
     .trim()
     .toLowerCase();
-  const password = String(formData.get("password") ?? "");
+  const password = formString(formData, "password");
 
   const user = db.select().from(users).where(eq(users.email, email)).get();
 
@@ -152,7 +153,7 @@ export async function createInviteAction(
 ): Promise<ActionState> {
   await requireAdmin();
 
-  const rawEmail = String(formData.get("email") ?? "").trim();
+  const rawEmail = formTrimmed(formData, "email");
   const role = formData.get("role") === "admin" ? "admin" : "member";
 
   let email: string | null = null;
@@ -187,7 +188,7 @@ export async function createInviteAction(
 
 export async function revokeInviteAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (id) db.delete(invites).where(eq(invites.id, id)).run();
   revalidatePath("/team");
 }
@@ -196,9 +197,9 @@ export async function acceptInviteAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const token = String(formData.get("token") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
+  const token = formString(formData, "token");
+  const name = formTrimmed(formData, "name");
+  const password = formString(formData, "password");
 
   const limit = rateLimit(await clientKey("invite"), 20, 15 * 60_000);
   if (!limit.ok) return { error: "Too many attempts. Try again later." };
@@ -256,8 +257,8 @@ export async function changePasswordAction(
   const user = await getCurrentUser();
   if (!user) return { error: "Not signed in" };
 
-  const current = String(formData.get("current") ?? "");
-  const next = String(formData.get("password") ?? "");
+  const current = formString(formData, "current");
+  const next = formString(formData, "password");
 
   if (!(await verifyPassword(current, user.passwordHash))) {
     return { error: "Current password is incorrect" };
@@ -281,7 +282,7 @@ export async function changePasswordAction(
 
 export async function removeUserAction(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (!id || id === admin.id) return;
 
   // Never leave the instance without an administrator.
@@ -299,7 +300,7 @@ export async function removeUserAction(formData: FormData): Promise<void> {
 
 export async function setUserRoleAction(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const role = formData.get("role") === "admin" ? "admin" : "member";
   if (!id) return;
 

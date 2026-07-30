@@ -91,7 +91,13 @@ export function describeError(err: unknown): string {
 
   if (e.code) return `${e.code}${e.message ? `: ${e.message}` : ""}`;
   if (e instanceof Error) return e.message || e.name;
-  return String(err);
+  // `err` is unknown here, so String() could yield "[object Object]". Prefer the JSON
+  // shape, which at least names the fields, and fall back only if it is not encodable.
+  try {
+    return typeof err === "string" ? err : JSON.stringify(err);
+  } catch {
+    return "unserialisable error";
+  }
 }
 
 /**

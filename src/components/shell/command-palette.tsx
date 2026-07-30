@@ -159,10 +159,6 @@ export function CommandPalette({
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  useEffect(() => {
-    setCursor(0);
-  }, [query]);
-
   // Keep the highlighted row in view when navigating by keyboard.
   useEffect(() => {
     listRef.current
@@ -194,7 +190,12 @@ export function CommandPalette({
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // Reset alongside the query rather than in an effect reacting to it —
+              // an effect would render once with a stale cursor before correcting.
+              setCursor(0);
+            }}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
                 e.preventDefault();

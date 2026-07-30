@@ -14,7 +14,7 @@ import { schedulerStatus } from "@/lib/scheduler";
  */
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export function GET() {
   const scheduler = schedulerStatus();
 
   let dbOk = true;

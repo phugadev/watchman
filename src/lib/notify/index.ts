@@ -8,7 +8,6 @@ import {
 } from "@/lib/db/schema";
 import { deliverTelegram } from "./telegram";
 import { deliverWebhook } from "./webhook";
-import { renderSubject } from "./render";
 import {
   RETRY_DELAYS_MS,
   configSchemas,

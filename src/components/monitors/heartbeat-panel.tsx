@@ -91,7 +91,7 @@ export function HeartbeatPanel({
             type="button"
             variant="bracket"
             size="sm"
-            onClick={() => copy(url, "url")}
+            onClick={() => void copy(url, "url")}
           >
             {copied === "url" ? "copied" : "copy"}
           </Button>
@@ -116,7 +116,7 @@ export function HeartbeatPanel({
                 type="button"
                 variant="bracket"
                 size="sm"
-                onClick={() => copy(s.code, s.label)}
+                onClick={() => void copy(s.code, s.label)}
               >
                 {copied === s.label ? "copied" : "copy"}
               </Button>
