@@ -404,7 +404,14 @@ export function getMonitorDetail(id: string, windowKey: WindowKey = "24h") {
 export function dailyTape(
   monitorId: string,
   days: number,
-): { day: number; status: MonitorStatus; uptimePct: number | null; total: number }[] {
+): {
+  day: number;
+  status: MonitorStatus;
+  uptimePct: number | null;
+  total: number;
+  degradedCount: number;
+  downCount: number;
+}[] {
   const start = bucketStart(Date.now(), "day") - (days - 1) * DAY_MS;
 
   const rows = db
@@ -432,13 +439,22 @@ export function dailyTape(
     status: MonitorStatus;
     uptimePct: number | null;
     total: number;
+    degradedCount: number;
+    downCount: number;
   }[] = [];
 
   for (let i = 0; i < days; i++) {
     const day = start + i * DAY_MS;
     const r = byDay.get(day);
     if (!r || r.total === 0) {
-      out.push({ day, status: "pending", uptimePct: null, total: 0 });
+      out.push({
+        day,
+        status: "pending",
+        uptimePct: null,
+        total: 0,
+        degradedCount: 0,
+        downCount: 0,
+      });
       continue;
     }
     const uptimePct = ((r.upCount + r.degradedCount) / r.total) * 100;
@@ -447,6 +463,8 @@ export function dailyTape(
       status: r.downCount > 0 ? "down" : r.degradedCount > 0 ? "degraded" : "up",
       uptimePct,
       total: r.total,
+      degradedCount: r.degradedCount,
+      downCount: r.downCount,
     });
   }
 
