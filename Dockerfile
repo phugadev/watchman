@@ -23,6 +23,14 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# public/ is optional and currently empty, and git does not track empty directories — so
+# it exists in a working tree that once created it but not in a fresh clone. Without this
+# the runner's `COPY /app/public` failed on CI while passing locally, which is the most
+# misleading way for a build to break. Materialise it so the copy has a target either
+# way, and so dropping a favicon in later needs no Dockerfile change.
+RUN mkdir -p public
+
 RUN pnpm build
 
 # Guarantee the native addon is present in the standalone tree, and prove it loads.
