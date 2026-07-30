@@ -1,0 +1,91 @@
+name: Release
+
+# Publishes a container image so people can run Watchman without cloning it.
+#
+# Only fires on a version tag you push deliberately:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Nothing is published on a normal commit to main. `workflow_dispatch` is here for a
+# manual re-run if a publish half-fails.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # Resolves to phugadev/watchman — derived rather than hardcoded so a fork publishes
+  # to its own namespace instead of failing against someone else's.
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for GITHUB_TOKEN to push to GHCR.
+      packages: write
+      # Lets the build attach a provenance attestation, so consumers can verify the
+      # image was built from this repo by this workflow.
+      id-token: write
+      attestations: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tests already ran on the commit, but a tag is the last chance to catch a
+      # broken release before it is public and immutable.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      # arm64 matters here: a lot of self-hosters run Watchman on a Raspberry Pi or an
+      # Ampere VPS, and an amd64-only image silently excludes them.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # v1.2.3 produces :1.2.3, :1.2, :1 and :latest, so people can pin as loosely
+          # or as tightly as they want.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=Watchman
+            org.opencontainers.image.description=Self-hosted end-to-end monitoring: synthetic checks, heartbeats, incidents, and status pages.
+            org.opencontainers.image.licenses=MIT
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

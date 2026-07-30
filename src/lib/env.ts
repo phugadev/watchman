@@ -93,7 +93,7 @@ export const env = {
   /** Identifies Watchman's probes in target access logs. */
   userAgent:
     process.env.WATCHMAN_USER_AGENT ??
-    "Watchman/0.1 (+https://github.com/watchman)",
+    "Watchman/0.1 (+https://github.com/phugadev/watchman)",
 } as const;
 
 export type Env = typeof env;
@@ -109,9 +109,12 @@ export function assertRuntimeConfig(): void {
   // Touching the getter is what forces resolution — and the throw, if it is unset.
   void env.secret;
 
-  if (isProd && env.publicUrl.startsWith("http://localhost")) {
+  // Test what was actually configured, not what it resolved to. Checking the resolved
+  // URL for "localhost" told anyone deliberately running on localhost that their
+  // WATCHMAN_URL was unset, which was simply untrue.
+  if (isProd && !process.env.WATCHMAN_URL) {
     console.warn(
-      "[watchman] WATCHMAN_URL is unset — heartbeat URLs and status-page links will point at localhost",
+      `[watchman] WATCHMAN_URL is unset, defaulting to ${env.publicUrl} — heartbeat URLs and status-page links will point there, which is wrong from any other machine`,
     );
   }
 }

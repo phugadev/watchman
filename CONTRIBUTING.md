@@ -79,6 +79,34 @@ maintenance windows all exist because a channel people mute is worse than no cha
 4. Add form fields in `channel-forms.tsx`, and mask any credential everywhere it
    surfaces.
 
+## Cutting a release
+
+Images publish from a version tag, never from a push to main:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+That runs typecheck and tests once more, then builds `linux/amd64` and `linux/arm64` and
+pushes to `ghcr.io/phugadev/watchman` as `:0.1.0`, `:0.1`, `:0`, and `:latest`, with a
+build-provenance attestation. arm64 is not optional — a good share of self-hosters are on
+a Pi or an Ampere VPS, and an amd64-only image excludes them silently.
+
+The registry namespace comes from `github.repository`, so a fork publishes to its own
+namespace rather than failing against someone else's.
+
+## A note on scripts and .env
+
+Next loads `.env` automatically; scripts run through `tsx` do not. Anything that hashes a
+token (sessions, invites) derives its digest from `WATCHMAN_SECRET`, so a script and the
+running app will disagree unless the script loads the same environment:
+
+```bash
+set -a; . ./.env; set +a && npx tsx scripts/your-script.mts
+```
+
+`pnpm seed` is unaffected — password hashing does not use the instance secret.
+
 ## Reporting bugs
 
 For anything alerting-related, please include: monitor kind, interval,
