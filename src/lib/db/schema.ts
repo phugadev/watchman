@@ -282,9 +282,6 @@ export const incidents = sqliteTable(
     status: text("status", { enum: ["open", "acknowledged", "resolved"] })
       .notNull()
       .default("open"),
-    severity: text("severity", { enum: ["down", "degraded"] })
-      .notNull()
-      .default("down"),
     startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
     resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
     /** Error text from the check that opened the incident. */

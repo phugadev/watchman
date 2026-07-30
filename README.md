@@ -114,6 +114,19 @@ file rather than by settings someone clicked into a database.
 Incidents and their timelines are never pruned. They are the audit trail, they are
 small, and losing them quietly would be worse than the disk they cost.
 
+## Tags
+
+Monitors take comma-separated tags — `prod, api, tier:1`. They are normalised on save
+(lowercased, trimmed, de-duplicated), because `Prod` and `prod` filtering to different
+sets would be a quiet lie.
+
+Tags show on the dashboard cards and the monitor list, where clicking one filters to it
+(`/monitors?tag=prod` — shareable). They also feed the ⌘K palette, so typing `payments`
+finds every monitor tagged that way even when the word appears in none of their names.
+
+Ten per monitor, 32 characters each — enough for environment, team, and tier without
+becoming a folksonomy.
+
 ## Backups
 
 Watchman holds the only copy of your incident history, and it runs SQLite in WAL mode.

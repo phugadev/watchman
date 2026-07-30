@@ -9,6 +9,7 @@ import { NavLinks } from "@/components/shell/nav";
 import { LiveTape } from "@/components/shell/live-tape";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { listMonitorsWithHealth } from "@/lib/queries";
+import { readTags } from "@/lib/monitors/tags";
 
 /**
  * Every page under this layout depends on live database state, so none may be
@@ -53,6 +54,7 @@ export default async function AppLayout({
           name: m.monitor.name,
           kind: m.monitor.kind,
           status: m.status,
+          tags: readTags(m.monitor.tags),
         }))}
         isAdmin={user.role === "admin"}
       />

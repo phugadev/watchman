@@ -80,6 +80,8 @@ export const monitorFormSchema = z
 
     paused: z.boolean().default(false),
     channelIds: z.array(z.string()).default([]),
+    /** Comma-separated in the form; normalised and de-duplicated by parseTags. */
+    tags: z.string().max(400).optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
     // Target requirements differ per kind, which a flat schema cannot express.

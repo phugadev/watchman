@@ -11,6 +11,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { checkNow } from "@/lib/scheduler";
 import { rollupMonitorFully } from "@/lib/scheduler/rollup";
 import { monitorFormSchema, parseHeaderLines } from "./schema";
+import { parseTags, serialiseTags } from "./tags";
 
 export interface MonitorActionState {
   error?: string;
@@ -46,6 +47,7 @@ function readForm(formData: FormData) {
     sloTargetPct: String(formData.get("sloTargetPct") ?? "99.9"),
     paused: formData.get("paused") === "on",
     channelIds: formData.getAll("channelIds").map(String),
+    tags: String(formData.get("tags") ?? ""),
   };
 
   return monitorFormSchema.safeParse(raw);
@@ -120,6 +122,7 @@ export async function createMonitorAction(
       sslWarnDays: v.sslWarnDays,
       sloTargetPct: v.sloTargetPct,
       paused: v.paused,
+      tags: serialiseTags(parseTags(v.tags)),
       // Minted here, not in the form, so the token never round-trips through the
       // browser before it exists.
       heartbeatToken: v.kind === "heartbeat" ? newHeartbeatToken() : null,
@@ -190,6 +193,7 @@ export async function updateMonitorAction(
       sslWarnDays: v.sslWarnDays,
       sloTargetPct: v.sloTargetPct,
       paused: v.paused,
+      tags: serialiseTags(parseTags(v.tags)),
       // Converting an existing monitor to a heartbeat needs a token; converting
       // away from one keeps it, so switching back does not invalidate a URL that
       // is already deployed in someone's crontab.
