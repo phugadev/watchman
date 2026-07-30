@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   channels,
@@ -21,13 +21,16 @@ import { maintenancePhase } from "@/lib/maintenance/phase";
 import { GRADE_CUTOFFS, computeGrade, type Grade } from "@/lib/metrics/grade";
 import {
   WINDOWS,
+  asBucket,
+  mergeBuckets,
   sloBudget,
   summarize,
+  type BucketLike,
   type MonitorStatus,
   type Summary,
   type WindowKey,
 } from "@/lib/metrics/uptime";
-import { DAY_MS, bucketStart } from "@/lib/scheduler/rollup";
+import { DAY_MS, HOUR_MS, bucketStart } from "@/lib/scheduler/rollup";
 
 /** A monitor plus everything the dashboard renders next to it. */
 export interface MonitorHealth {
@@ -62,21 +65,91 @@ export function listMonitorsWithHealth(tapeSize = 40): MonitorHealth[] {
   if (all.length === 0) return [];
 
   const ids = all.map((m) => m.id);
-  const since24h = new Date(Date.now() - WINDOWS["24h"]);
-  const since30d = new Date(Date.now() - WINDOWS["30d"]);
+  const now = Date.now();
+  const since30d = new Date(now - WINDOWS["30d"]);
 
-  const recentChecks = db
+  /*
+   * The window is aligned to hour boundaries: the 23 most recent closed hours, plus the
+   * current partial one.
+   *
+   * A naive `now - 24h` lower bound silently loses data. Buckets are hour-aligned, so
+   * the bucket *containing* that instant starts before it and gets filtered out, dropping
+   * up to 59 minutes — which showed up as a 1.4-point uptime discrepancy against an exact
+   * scan. Aligning both bounds to the grid means the pieces tile exactly: no gap, no
+   * double count, and availability comes out identical to counting raw rows.
+   */
+  const currentHourStart = new Date(bucketStart(now, "hour"));
+  const windowStart = new Date(currentHourStart.getTime() - 23 * HOUR_MS);
+
+  /*
+   * 24h health is assembled from closed hourly rollups plus raw checks for the current
+   * partial hour, rather than every raw check in the window.
+   *
+   * The old approach loaded the entire 24h of checks for every monitor on each render:
+   * ~1,440 rows per monitor per day, so a forty-monitor fleet meant ~58,000 rows on a
+   * page that is `force-dynamic` and therefore never cached. This is ~23 rollup rows
+   * plus one partial hour per monitor, so cost stops scaling with the check interval.
+   */
+  const closedBuckets = db
+    .select({
+      monitorId: rollups.monitorId,
+      total: rollups.total,
+      upCount: rollups.upCount,
+      degradedCount: rollups.degradedCount,
+      downCount: rollups.downCount,
+      avgMs: rollups.avgMs,
+      p95Ms: rollups.p95Ms,
+      minMs: rollups.minMs,
+      maxMs: rollups.maxMs,
+    })
+    .from(rollups)
+    .where(
+      and(
+        inArray(rollups.monitorId, ids),
+        eq(rollups.bucket, "hour"),
+        gte(rollups.startedAt, windowStart),
+        lt(rollups.startedAt, currentHourStart),
+      ),
+    )
+    .all();
+
+  const currentHourChecks = db
     .select({
       monitorId: checks.monitorId,
-      at: checks.at,
       ok: checks.ok,
-      status: checks.status,
       latencyMs: checks.latencyMs,
     })
     .from(checks)
-    .where(and(inArray(checks.monitorId, ids), gte(checks.at, since24h)))
-    .orderBy(desc(checks.at))
+    .where(
+      and(inArray(checks.monitorId, ids), gte(checks.at, currentHourStart)),
+    )
     .all();
+
+  /*
+   * The tape wants the last N checks per monitor, which a plain time filter cannot
+   * express: N checks is 40 minutes for a 60-second monitor and 10 days for a 6-hourly
+   * one. A window function gets exactly N per monitor in a single round trip, instead of
+   * one LIMIT query per monitor.
+   */
+  const tapeRows = db.all<{
+    monitor_id: string;
+    at: number;
+    status: string;
+    latency_ms: number | null;
+  }>(sql`
+    SELECT monitor_id, at, status, latency_ms FROM (
+      SELECT
+        monitor_id,
+        at,
+        status,
+        latency_ms,
+        ROW_NUMBER() OVER (PARTITION BY monitor_id ORDER BY at DESC) AS rn
+      FROM checks
+      WHERE monitor_id IN ${ids}
+    )
+    WHERE rn <= ${Math.max(0, tapeSize)}
+    ORDER BY monitor_id, at ASC
+  `);
 
   const incidentCounts = db
     .select({ monitorId: incidents.monitorId, n: sql<number>`count(*)` })
@@ -93,19 +166,45 @@ export function listMonitorsWithHealth(tapeSize = 40): MonitorHealth[] {
     .where(and(inArray(incidents.monitorId, ids), ne(incidents.status, "resolved")))
     .all();
 
-  const byMonitor = new Map<string, typeof recentChecks>();
-  for (const c of recentChecks) {
-    const list = byMonitor.get(c.monitorId);
+  const bucketsByMonitor = new Map<string, BucketLike[]>();
+  for (const b of closedBuckets) {
+    const list = bucketsByMonitor.get(b.monitorId);
+    if (list) list.push(b);
+    else bucketsByMonitor.set(b.monitorId, [b]);
+  }
+
+  const currentByMonitor = new Map<string, { ok: boolean; latencyMs: number | null }[]>();
+  for (const c of currentHourChecks) {
+    const list = currentByMonitor.get(c.monitorId);
     if (list) list.push(c);
-    else byMonitor.set(c.monitorId, [c]);
+    else currentByMonitor.set(c.monitorId, [c]);
+  }
+
+  const tapeByMonitor = new Map<string, MonitorHealth["tape"]>();
+  for (const r of tapeRows) {
+    const entry = {
+      status: r.status as MonitorStatus,
+      at: r.at,
+      latencyMs: r.latency_ms,
+    };
+    const list = tapeByMonitor.get(r.monitor_id);
+    if (list) list.push(entry);
+    else tapeByMonitor.set(r.monitor_id, [entry]);
   }
 
   const incidentMap = new Map(incidentCounts.map((r) => [r.monitorId, r.n]));
   const openMap = new Map(openIncidents.map((r) => [r.monitorId, r.id]));
 
   return all.map((monitor) => {
-    const rows = byMonitor.get(monitor.id) ?? [];
-    const summary24h = summarize(rows, monitor.degradedMs);
+    const closed = bucketsByMonitor.get(monitor.id) ?? [];
+    const partial = currentByMonitor.get(monitor.id) ?? [];
+
+    const summary24h = mergeBuckets([
+      ...closed,
+      // The current hour has no rollup yet, so fold its raw checks in as one bucket.
+      ...(partial.length > 0 ? [asBucket(partial, monitor.degradedMs)] : []),
+    ]);
+
     const incidents30d = incidentMap.get(monitor.id) ?? 0;
     const graded = computeGrade({
       uptimePct: summary24h.uptimePct,
@@ -117,19 +216,14 @@ export function listMonitorsWithHealth(tapeSize = 40): MonitorHealth[] {
       monitor,
       status: effectiveStatus(monitor),
       summary24h,
-      grade: rows.length === 0 ? ("S" as Grade) : graded.grade,
+      // A monitor with no data yet has nothing to grade; showing F would libel a
+      // check that has simply not run.
+      grade: summary24h.total === 0 ? ("S" as Grade) : graded.grade,
       gradeScore: graded.score,
       incidents30d,
       openIncidentId: openMap.get(monitor.id) ?? null,
-      // Reversed so the tape reads left-to-right, oldest to newest.
-      tape: rows
-        .slice(0, tapeSize)
-        .reverse()
-        .map((c) => ({
-          status: c.status as MonitorStatus,
-          at: c.at.getTime(),
-          latencyMs: c.latencyMs,
-        })),
+      // Already ordered oldest-to-newest by the window query.
+      tape: tapeByMonitor.get(monitor.id) ?? [],
     };
   });
 }
