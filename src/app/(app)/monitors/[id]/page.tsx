@@ -336,6 +336,9 @@ export default async function MonitorPage({
             <MonoLabel tone="slate">badge for your readme</MonoLabel>
             <Code className="truncate">/api/badge/{monitor.id}</Code>
           </div>
+          {/* eslint-disable-next-line @next/next/no-img-element --
+              next/image cannot optimise a dynamically generated SVG, and routing this
+              through the image pipeline would cache the very thing that must stay fresh. */}
           <img
             src={`/api/badge/${monitor.id}`}
             alt={`Uptime badge for ${monitor.name}`}

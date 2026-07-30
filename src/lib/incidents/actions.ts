@@ -7,10 +7,11 @@ import {
   commentOnIncident,
   resolveIncidentManually,
 } from "./engine";
+import { formString } from "@/lib/forms";
 
 export async function acknowledgeAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (id) acknowledgeIncident(id, user.id, user.name);
   revalidatePath(`/incidents/${id}`);
   revalidatePath("/incidents");
@@ -19,15 +20,15 @@ export async function acknowledgeAction(formData: FormData): Promise<void> {
 
 export async function commentAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const id = String(formData.get("id") ?? "");
-  const message = String(formData.get("message") ?? "");
+  const id = formString(formData, "id");
+  const message = formString(formData, "message");
   if (id && message.trim()) commentOnIncident(id, user.id, message);
   revalidatePath(`/incidents/${id}`);
 }
 
 export async function resolveAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (id) resolveIncidentManually(id, user.id, user.name);
   revalidatePath(`/incidents/${id}`);
   revalidatePath("/incidents");

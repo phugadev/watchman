@@ -377,10 +377,10 @@ async function main() {
       db.update(monitors)
         .set({
           lastStatus: last.status,
-          lastCheckedAt: last.at as Date,
+          lastCheckedAt: last.at,
           lastLatencyMs: last.latencyMs ?? null,
           lastError: last.error ?? null,
-          lastStatusChangedAt: last.at as Date,
+          lastStatusChangedAt: last.at,
         })
         .where(sql`${monitors.id} = ${monitor.id}`)
         .run();

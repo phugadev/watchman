@@ -71,6 +71,9 @@ export function Select({
       className={cn(
         control,
         "appearance-none bg-[length:10px] bg-[right_0.75rem_center] bg-no-repeat pr-9 uppercase tracking-[0.1em]",
+        // Was destructured and then dropped, so every `className` passed to a Select
+        // was silently ignored. Caught by no-unused-vars.
+        className,
       )}
       style={{
         backgroundImage:

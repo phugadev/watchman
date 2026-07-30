@@ -12,6 +12,7 @@ import { checkNow } from "@/lib/scheduler";
 import { rollupMonitorFully } from "@/lib/scheduler/rollup";
 import { monitorFormSchema, parseHeaderLines } from "./schema";
 import { parseTags, serialiseTags } from "./tags";
+import { formBool, formOptional, formString, formStrings } from "@/lib/forms";
 
 export interface MonitorActionState {
   error?: string;
@@ -22,32 +23,30 @@ export interface MonitorActionState {
 /** Translate a FormData submission into validated values. */
 function readForm(formData: FormData) {
   const raw = {
-    name: String(formData.get("name") ?? ""),
-    description: String(formData.get("description") ?? ""),
-    kind: String(formData.get("kind") ?? "http"),
-    target: String(formData.get("target") ?? ""),
-    method: String(formData.get("method") ?? "GET"),
-    headers: String(formData.get("headers") ?? ""),
-    body: String(formData.get("body") ?? ""),
-    expectedStatus: String(formData.get("expectedStatus") ?? "2xx"),
-    keyword: String(formData.get("keyword") ?? ""),
-    keywordMode: String(formData.get("keywordMode") ?? "contains"),
-    followRedirects: formData.get("followRedirects") === "on",
-    verifyTls: formData.get("verifyTls") === "on",
-    intervalSec: String(formData.get("intervalSec") ?? "60"),
-    timeoutMs: String(formData.get("timeoutMs") ?? "10000"),
-    confirmFailures: String(formData.get("confirmFailures") ?? "2"),
-    confirmRecoveries: String(formData.get("confirmRecoveries") ?? "2"),
+    name: formString(formData, "name"),
+    description: formString(formData, "description"),
+    kind: formString(formData, "kind", "http"),
+    target: formString(formData, "target"),
+    method: formString(formData, "method", "GET"),
+    headers: formString(formData, "headers"),
+    body: formString(formData, "body"),
+    expectedStatus: formString(formData, "expectedStatus", "2xx"),
+    keyword: formString(formData, "keyword"),
+    keywordMode: formString(formData, "keywordMode", "contains"),
+    followRedirects: formBool(formData, "followRedirects"),
+    verifyTls: formBool(formData, "verifyTls"),
+    intervalSec: formString(formData, "intervalSec", "60"),
+    timeoutMs: formString(formData, "timeoutMs", "10000"),
+    confirmFailures: formString(formData, "confirmFailures", "2"),
+    confirmRecoveries: formString(formData, "confirmRecoveries", "2"),
     // An empty degraded field means "no threshold", which is not the same as 0.
-    degradedMs: formData.get("degradedMs")
-      ? String(formData.get("degradedMs"))
-      : null,
-    graceSec: String(formData.get("graceSec") ?? "120"),
-    sslWarnDays: String(formData.get("sslWarnDays") ?? "21"),
-    sloTargetPct: String(formData.get("sloTargetPct") ?? "99.9"),
-    paused: formData.get("paused") === "on",
-    channelIds: formData.getAll("channelIds").map(String),
-    tags: String(formData.get("tags") ?? ""),
+    degradedMs: formOptional(formData, "degradedMs"),
+    graceSec: formString(formData, "graceSec", "120"),
+    sslWarnDays: formString(formData, "sslWarnDays", "21"),
+    sloTargetPct: formString(formData, "sloTargetPct", "99.9"),
+    paused: formBool(formData, "paused"),
+    channelIds: formStrings(formData, "channelIds"),
+    tags: formString(formData, "tags"),
   };
 
   return monitorFormSchema.safeParse(raw);
@@ -149,7 +148,7 @@ export async function updateMonitorAction(
   formData: FormData,
 ): Promise<MonitorActionState> {
   await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (!id) return { error: "Missing monitor id" };
 
   const existing = db.select().from(monitors).where(eq(monitors.id, id)).get();
@@ -219,7 +218,7 @@ export async function updateMonitorAction(
 
 export async function togglePauseAction(formData: FormData): Promise<void> {
   await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const monitor = db.select().from(monitors).where(eq(monitors.id, id)).get();
   if (!monitor) return;
 
@@ -242,7 +241,7 @@ export async function togglePauseAction(formData: FormData): Promise<void> {
 
 export async function checkNowAction(formData: FormData): Promise<void> {
   await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (!id) return;
 
   // "Check now" bypasses the interval, so without a cap a held-down button becomes
@@ -261,7 +260,7 @@ export async function checkNowAction(formData: FormData): Promise<void> {
  */
 export async function deleteMonitorAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   // Checks, rollups, incidents, and channel links all cascade from the schema.
   if (id) db.delete(monitors).where(eq(monitors.id, id)).run();
   revalidatePath("/monitors");
@@ -274,7 +273,7 @@ export async function rotateHeartbeatTokenAction(
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   const monitor = db.select().from(monitors).where(eq(monitors.id, id)).get();
   if (!monitor || monitor.kind !== "heartbeat") return;
 
@@ -289,7 +288,7 @@ export async function rotateHeartbeatTokenAction(
 /** Rebuild every rollup bucket for a monitor, for when aggregates look wrong. */
 export async function rebuildRollupsAction(formData: FormData): Promise<void> {
   await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const id = formString(formData, "id");
   if (id) rollupMonitorFully(id);
   revalidatePath(`/monitors/${id}`);
 }

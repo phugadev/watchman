@@ -141,9 +141,7 @@ export function computeGrade(input: GradeInput): GradeResult {
   }
 
   score = Math.round(clamp(score) * 10) / 10;
-  const grade =
-    GRADE_CUTOFFS.find((c) => score >= c.min)?.grade ??
-    ("F" as Grade);
+  const grade = GRADE_CUTOFFS.find((c) => score >= c.min)?.grade ?? "F";
 
   return { grade, score, parts: { uptime, latency, stability } };
 }

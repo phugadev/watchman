@@ -17,6 +17,7 @@ users, so you cannot lose real data to it. To start over: `rm -rf data && pnpm s
 Before opening a PR:
 
 ```bash
+pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
@@ -24,6 +25,13 @@ pnpm build
 
 `pnpm build` catches things `pnpm typecheck` does not — SWC and tsc disagree about a
 few TypeScript forms, so a green typecheck is not proof the build works.
+
+The lint config is deliberately narrow: no stylistic rules, since arguing about those in
+review is the fastest way to make a linter unwelcome and none of them prevent a bug. What
+it does enforce is the class of mistake the compiler cannot see — floating promises,
+unnecessary assertions, and unsafe stringification of values that are not strings. Two
+`no-unsafe-*` warnings remain by design at JSON.parse boundaries that zod already
+narrows; erroring there would only teach people to write eslint-disable comments.
 
 ## Conventions worth knowing
 
