@@ -114,6 +114,93 @@ file rather than by settings someone clicked into a database.
 Incidents and their timelines are never pruned. They are the audit trail, they are
 small, and losing them quietly would be worse than the disk they cost.
 
+## Backups
+
+Watchman holds the only copy of your incident history, and it runs SQLite in WAL mode.
+That combination has one trap in it worth understanding before you write a backup job.
+
+### Why `cp watchman.db` is wrong
+
+In WAL mode, committed transactions live in `watchman.db-wal` until a checkpoint folds
+them into the main file. Copy `watchman.db` on its own and you get whatever the last
+checkpoint left behind.
+
+The failure is not a corrupt file — it is a *stale* one, and that is worse, because
+every check you would think to run says it is fine. Measured on a live instance:
+
+| | `checks` rows | `PRAGMA integrity_check` |
+| --- | --- | --- |
+| What the running app sees | 14,189 | — |
+| `cp watchman.db` | **30,399** | **ok** |
+| `VACUUM INTO` | 14,189 | ok |
+
+The naive copy was *larger* and passed integrity_check, while containing a database from
+before retention pruning had run. "More rows, verified intact" is exactly the reasoning
+that would make you trust it.
+
+Copying all three files (`.db`, `-wal`, `-shm`) is not a fix either: `cp` is not atomic
+across three files being written concurrently.
+
+### Taking a backup
+
+```bash
+./scripts/backup.sh                      # container "watchman" → ./backups
+./scripts/backup.sh watchman /mnt/backup # or name them explicitly
+```
+
+It runs `VACUUM INTO`, which produces a single self-contained file that is
+transactionally consistent even mid-write, copies it out, and then reads it back to
+verify — integrity plus row counts, since integrity alone would have blessed the stale
+copy above. No downtime, and the output is compacted (2.5MB from a 4.4MB live database).
+
+The image ships no `sqlite3` CLI, so anything you find online starting `sqlite3 /data/...`
+will not run. The script drives better-sqlite3 through node, which is already in the
+image.
+
+Nightly, via cron on the host:
+
+```
+0 4 * * *  cd /srv/watchman && ./scripts/backup.sh >> /var/log/watchman-backup.log 2>&1
+```
+
+Prune old ones however you like — `find ./backups -name '*.db' -mtime +30 -delete`.
+
+For continuous replication rather than snapshots, [Litestream](https://litestream.io)
+streams the WAL to S3-compatible storage and gives you point-in-time recovery. Worth it
+if losing a day of history would actually hurt.
+
+### Restoring
+
+```bash
+docker compose down
+
+docker run --rm \
+  -v watchman-data:/data \
+  -v "$PWD/backups":/restore:ro \
+  alpine sh -c "cp /restore/watchman-20260730-162034.db /data/watchman.db \
+                && rm -f /data/watchman.db-wal /data/watchman.db-shm \
+                && chown -R 1001:1001 /data"
+
+docker compose up -d
+```
+
+Three things that matter here:
+
+- **Delete any leftover `-wal` and `-shm`.** They belong to the database you replaced,
+  and SQLite will try to apply them to the new one.
+- **`chown` to uid 1001.** The container runs as a non-root user. Restore as root and
+  Watchman refuses to start — deliberately, rather than silently monitoring nothing —
+  with `SqliteError: attempt to write a readonly database` and
+  `code: 'SQLITE_READONLY_DIRECTORY'` in the logs. If you see that, this is why.
+- **Keep your `WATCHMAN_SECRET` with the backup.** It is not in the database. Restore
+  with a different secret and the data is all intact, but every session and pending
+  invite is invalidated, because their tokens are hashed with it. Heartbeat URLs survive,
+  since those tokens are stored as-is.
+
+Verified end to end: back up a live instance, destroy the container *and* its volume,
+restore into a fresh one — 14,190 checks, 52 incidents, and the admin account all came
+back, with `/api/health` green.
+
 ## Heartbeats
 
 Create a heartbeat monitor and Watchman gives you a URL. Call it when your job
