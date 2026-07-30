@@ -11,6 +11,16 @@ import { CommandPalette } from "@/components/shell/command-palette";
 import { listMonitorsWithHealth } from "@/lib/queries";
 
 /**
+ * Every page under this layout depends on live database state, so none may be
+ * prerendered. Declared once here rather than per page, because forgetting it is silent
+ * and the failure is nasty: at build time no account exists, so `requireUser()` takes
+ * its needs-setup branch and redirects *before* reading cookies. With no dynamic API
+ * touched, Next marks the route static and bakes that redirect in permanently — which
+ * is exactly what had happened to /monitors/new.
+ */
+export const dynamic = "force-dynamic";
+
+/**
  * The signed-in shell.
  *
  * A fixed header and a persistent right-hand live tape on wide screens. The tape is

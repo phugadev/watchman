@@ -17,9 +17,13 @@ export async function register(): Promise<void> {
   assertRuntimeConfig();
 
   const { startScheduler } = await import("@/lib/scheduler");
-  const { db } = await import("@/lib/db");
+  const { db, initDb } = await import("@/lib/db");
   const { monitors } = await import("@/lib/db/schema");
   const { eq } = await import("drizzle-orm");
+
+  // The handle is lazy, so open it and apply migrations here — a bad or unwritable
+  // volume should kill the container at start, not on the first request that queries.
+  initDb();
 
   /*
    * Clear stale next-run reservations for monitors whose slot passed while the

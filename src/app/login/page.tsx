@@ -6,6 +6,9 @@ import { getCurrentUser, needsSetup } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Sign in" };
 
+/** Reads whether the instance is claimed and whether a session exists — both live. */
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   if (needsSetup()) redirect("/setup");
   if (await getCurrentUser()) redirect("/dashboard");
