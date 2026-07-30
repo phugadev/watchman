@@ -84,6 +84,98 @@ export function summarize(
   };
 }
 
+/** The shape of a pre-aggregated bucket, as stored on the rollups table. */
+export interface BucketLike {
+  total: number;
+  upCount: number;
+  degradedCount: number;
+  downCount: number;
+  avgMs: number | null;
+  p95Ms: number | null;
+  minMs: number | null;
+  maxMs: number | null;
+}
+
+/**
+ * Combine pre-aggregated buckets into one summary.
+ *
+ * Lets a long window be answered from a handful of rollup rows instead of every raw
+ * check in it — the difference between ~1k rows and ~58k on a forty-monitor dashboard.
+ *
+ * Availability comes out exact, because it is only ever counting. Latency cannot: you
+ * cannot recover a true percentile from per-bucket percentiles without the underlying
+ * distribution. `p95Ms` is therefore a sample-count-weighted mean of the bucket p95s —
+ * the standard approximation, and a close one when buckets are similarly sized. `p50Ms`
+ * and `p99Ms` come back null rather than guessed, so nothing downstream can mistake an
+ * invented number for a measured one. Use `summarize()` on raw checks where exactness
+ * matters.
+ */
+export function mergeBuckets(parts: readonly BucketLike[]): Summary {
+  let total = 0;
+  let upCount = 0;
+  let degradedCount = 0;
+  let downCount = 0;
+
+  let latencyWeight = 0;
+  let p95Weighted = 0;
+  let avgWeight = 0;
+  let avgWeighted = 0;
+  let minMs: number | null = null;
+  let maxMs: number | null = null;
+
+  for (const p of parts) {
+    total += p.total;
+    upCount += p.upCount;
+    degradedCount += p.degradedCount;
+    downCount += p.downCount;
+
+    // Weight by the bucket's sample count so a quiet hour cannot swing the result as
+    // hard as a busy one.
+    const weight = Math.max(1, p.total);
+
+    if (p.p95Ms !== null) {
+      p95Weighted += p.p95Ms * weight;
+      latencyWeight += weight;
+    }
+    if (p.avgMs !== null) {
+      avgWeighted += p.avgMs * weight;
+      avgWeight += weight;
+    }
+    if (p.minMs !== null) minMs = minMs === null ? p.minMs : Math.min(minMs, p.minMs);
+    if (p.maxMs !== null) maxMs = maxMs === null ? p.maxMs : Math.max(maxMs, p.maxMs);
+  }
+
+  return {
+    total,
+    upCount,
+    degradedCount,
+    downCount,
+    uptimePct: total === 0 ? 0 : ((upCount + degradedCount) / total) * 100,
+    avgMs: avgWeight > 0 ? avgWeighted / avgWeight : null,
+    // Not derivable from bucket percentiles — see above.
+    p50Ms: null,
+    p95Ms: latencyWeight > 0 ? Math.round(p95Weighted / latencyWeight) : null,
+    p99Ms: null,
+    minMs,
+    maxMs,
+  };
+}
+
+/** Treat a set of raw checks as one bucket, so it can be merged with real rollups. */
+export function asBucket(samples: readonly LatencySample[], degradedThresholdMs?: number | null): BucketLike {
+  const s = summarize(samples, degradedThresholdMs);
+  return {
+    total: s.total,
+    upCount: s.upCount,
+    degradedCount: s.degradedCount,
+    downCount: s.downCount,
+    avgMs: s.avgMs,
+    p95Ms: s.p95Ms,
+    minMs: s.minMs,
+    maxMs: s.maxMs,
+  };
+}
+
 export interface SloBudget {
   targetPct: number;
   windowMs: number;

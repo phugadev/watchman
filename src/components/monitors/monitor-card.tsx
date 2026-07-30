@@ -68,8 +68,16 @@ export function MonitorCard({ health }: { health: MonitorHealth }) {
         <Stat
           label="24h"
           value={summary24h.total === 0 ? "—" : formatUptime(summary24h.uptimePct)}
+          title={`${summary24h.total} checks · ${summary24h.downCount} failed`}
         />
-        <Stat label="p95" value={formatMs(summary24h.p95Ms)} />
+        {/* Aggregated from hourly buckets, so it is close but not the exact 24h
+            percentile — the monitor page computes that from raw checks. Said out loud
+            here rather than letting the two quietly disagree. */}
+        <Stat
+          label="p95"
+          value={formatMs(summary24h.p95Ms)}
+          title="Approximate — weighted across hourly buckets. Open the monitor for the exact figure."
+        />
         <Stat
           label="last"
           value={
@@ -89,9 +97,17 @@ export function MonitorCard({ health }: { health: MonitorHealth }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: string;
+  title?: string;
+}) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" title={title}>
       <MonoLabel tone="slate">{label}</MonoLabel>
       <span className="tnum font-mono text-[12px] text-bone">{value}</span>
     </div>
