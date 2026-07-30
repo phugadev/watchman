@@ -29,6 +29,18 @@ jobs:
       # resolution of the secret.
       - run: pnpm build
 
+      # A build must not touch the database either. If it does, some page that depends
+      # on live state is being prerendered — and at build time the database is empty, so
+      # auth checks take their needs-setup branch and Next bakes that redirect in
+      # permanently. Cheap assertion, nasty bug.
+      - name: Assert the build stayed database-free
+        run: |
+          if [ -e data ]; then
+            echo "::error::pnpm build created $(ls data) — a route depending on live DB state is being prerendered. Add 'export const dynamic = \"force-dynamic\"' to it."
+            exit 1
+          fi
+          echo "build did not touch the database"
+
   docker:
     runs-on: ubuntu-latest
     steps:

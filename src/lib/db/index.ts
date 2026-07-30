@@ -54,9 +54,79 @@ function create() {
  */
 const globalForDb = globalThis as unknown as { __watchmanDb?: DB };
 
-export const db: DB = globalForDb.__watchmanDb ?? create();
+function connect(): DB {
+  const existing = globalForDb.__watchmanDb;
+  if (existing) return existing;
 
-if (!env.isProd) globalForDb.__watchmanDb = db;
+  const created = create();
+  // Cached in production too: without it, the lazy proxy below would open a fresh
+  // handle and re-run migrations on every property access.
+  globalForDb.__watchmanDb = created;
+  return created;
+}
+
+/**
+ * The database handle, connected on first actual use rather than at import.
+ *
+ * The laziness is load-bearing, not a micro-optimisation. `next build` collects page
+ * data with several parallel worker processes, and each one imports this module
+ * transitively through the route tree. With an eager singleton, all of them opened the
+ * same SQLite file and raced to apply migrations — one would win and the rest would
+ * die on `table already exists`. Connecting on demand means a build, which never
+ * issues a query, never touches the database at all.
+ *
+ * This is the same principle as the lazily-resolved WATCHMAN_SECRET in lib/env: a
+ * build must not require runtime state.
+ */
+/**
+ * Property probes that must never open a connection.
+ *
+ * Runtime plumbing inspects unfamiliar objects constantly: `await` looks for `then`,
+ * JSON serialisers look for `toJSON`, React and the RSC payload writer look for
+ * `$$typeof`, and node's inspector looks for its own symbol. Each of those is a plain
+ * property read, so without this list Next's static-generation pass opens SQLite just
+ * by asking the module "are you a promise?" — which is precisely what it was doing.
+ */
+const PROBE_KEYS: ReadonlySet<string | symbol> = new Set<string | symbol>([
+  "then",
+  "catch",
+  "finally",
+  "toJSON",
+  "$$typeof",
+  Symbol.toPrimitive,
+  Symbol.toStringTag,
+  Symbol.iterator,
+  Symbol.asyncIterator,
+  Symbol.for("nodejs.util.inspect.custom"),
+]);
+
+export const db: DB = new Proxy({} as DB, {
+  get(_target, prop) {
+    if (PROBE_KEYS.has(prop)) return undefined;
+
+    const real = connect() as unknown as Record<string | symbol, unknown>;
+    const value = real[prop];
+    // Drizzle's methods rely on `this`, so hand back a bound copy rather than a
+    // detached function reference.
+    return typeof value === "function"
+      ? (value as (...args: unknown[]) => unknown).bind(real)
+      : value;
+  },
+  has(_target, prop) {
+    if (PROBE_KEYS.has(prop)) return false;
+    return prop in (connect() as unknown as object);
+  },
+});
+
+/**
+ * Force the connection open and apply migrations now.
+ *
+ * Called from instrumentation.ts so a misconfigured or unwritable volume fails loudly
+ * at container start, rather than on whichever request happens to query first.
+ */
+export function initDb(): DB {
+  return connect();
+}
 
 export { schema };
 export * from "./schema";
