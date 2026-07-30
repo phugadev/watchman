@@ -1,6 +1,6 @@
 {
   "name": "watchman",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "license": "MIT",
   "description": "Self-hosted end-to-end monitoring: synthetic checks, dead-man's-switch heartbeats, incidents, and status pages.",
