@@ -48,7 +48,8 @@ Watchman instead, and Watchman alerts when the call stops coming.
   because "your DNS is slow" and "your app is slow" are the same number on a
   single-value chart.
 - **Status pages people can read.** Pick which monitors are public, publish 90 days of
-  history, and internal error text never leaks.
+  uptime history and a record of past incidents, and internal error text never leaks —
+  visitors see "recovered after 10m", never your `ECONNREFUSED`.
 
 ## Quickstart
 
