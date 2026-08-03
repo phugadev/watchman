@@ -89,7 +89,14 @@ function health(monitorId: string) {
   return { summary, grade: graded.grade };
 }
 
-function buildPayload({
+/**
+ * Assemble the alert body.
+ *
+ * Exported for the escalation sweep, which sends the same payload shape for an
+ * outage that is still running — a second alert describing the incident
+ * differently from the first would be its own small emergency.
+ */
+export function buildPayload({
   monitor,
   event,
   result,
@@ -104,6 +111,11 @@ function buildPayload({
     resolvedAt?: Date | null;
     cause?: string | null;
     flapping?: boolean;
+    escalation?: {
+      level: number;
+      policyName: string;
+      unacknowledgedForMs: number;
+    };
   };
 }): AlertPayload {
   const h = health(monitor.id);
@@ -129,6 +141,7 @@ function buildPayload({
           cause: incident.cause ?? null,
           flapping: incident.flapping ?? false,
           url: `${env.publicUrl}/incidents/${incident.id}`,
+          escalation: incident.escalation,
         }
       : undefined,
     check: result

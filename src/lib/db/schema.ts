@@ -7,6 +7,7 @@ import {
   sqliteTable,
   text,
   uniqueIndex,
+  type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core";
 import { newId } from "@/lib/ids";
 
@@ -232,6 +233,19 @@ export const monitors = sqliteTable(
     /** Set by the scheduler so a restart does not stampede every monitor at once. */
     nextRunAt: integer("next_run_at", { mode: "timestamp_ms" }),
 
+    /**
+     * Who to escalate to, and when, if an incident on this monitor goes
+     * unacknowledged. Null means a single alert and no follow-up.
+     *
+     * The `set null` here documents intent but does not reach the database:
+     * SQLite cannot attach a referential action to a column added by ALTER TABLE,
+     * so `deletePolicyAction` performs the detach itself before deleting.
+     */
+    escalationPolicyId: text("escalation_policy_id").references(
+      (): AnySQLiteColumn => escalationPolicies.id,
+      { onDelete: "set null" },
+    ),
+
     /** JSON array of free-form tags. */
     tags: text("tags"),
     createdAt: createdAt(),
@@ -343,6 +357,14 @@ export const incidents = sqliteTable(
     suppressed: integer("suppressed", { mode: "boolean" })
       .notNull()
       .default(false),
+    /**
+     * How many escalation notifications have gone out for this incident.
+     *
+     * Stored as a count rather than a timestamp so the sweep is idempotent: it
+     * compares what has fired against what is due and sends the difference, which
+     * means a restart mid-escalation cannot re-page everyone.
+     */
+    escalationLevel: integer("escalation_level").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [
@@ -447,7 +469,7 @@ export const notifications = sqliteTable(
       onDelete: "cascade",
     }),
     kind: text("kind", {
-      enum: ["opened", "resolved", "degraded", "acknowledged", "test"],
+      enum: ["opened", "resolved", "degraded", "acknowledged", "escalated", "test"],
     }).notNull(),
     at: integer("at", { mode: "timestamp_ms" })
       .notNull()
@@ -561,6 +583,63 @@ export const maintenanceMonitors = sqliteTable(
     index("maintenance_monitors_monitor_idx").on(t.monitorId),
   ],
 );
+
+/* ---------------------------------------------------------------------------
+ * Escalation
+ *
+ * A policy is an ordered list of "after N seconds, tell this channel". It exists
+ * because the failure mode of a single alert is silent: it fires into a channel
+ * nobody is looking at, and the outage runs until someone notices by other means.
+ * Escalation converts that silence into a second, louder attempt.
+ * ------------------------------------------------------------------------- */
+
+export const escalationPolicies = sqliteTable("escalation_policies", {
+  id: id(),
+  name: text("name").notNull(),
+  /**
+   * Once the last step has fired, notify it again every this-many seconds until
+   * somebody acknowledges. Null stops after the final step.
+   *
+   * This is the one setting here that can produce repeated alerts, so it is off
+   * unless asked for, and capped — see MAX_ESCALATION_REPEATS.
+   */
+  repeatSec: integer("repeat_sec"),
+  createdAt: createdAt(),
+});
+
+export const escalationSteps = sqliteTable(
+  "escalation_steps",
+  {
+    id: id(),
+    policyId: text("policy_id")
+      .notNull()
+      .references(() => escalationPolicies.id, { onDelete: "cascade" }),
+    /** 1-based order within the policy. */
+    position: integer("position").notNull(),
+    /**
+     * Seconds after the incident opened at which this step fires. Measured from
+     * the incident, not from the previous step, so reordering or editing one step
+     * cannot silently shift every later one.
+     */
+    afterSec: integer("after_sec").notNull(),
+    channelId: text("channel_id")
+      .notNull()
+      .references(() => channels.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    index("escalation_steps_policy_idx").on(t.policyId, t.position),
+    index("escalation_steps_channel_idx").on(t.channelId),
+  ],
+);
+
+/**
+ * Hard ceiling on repeat notifications for one incident.
+ *
+ * An incident nobody acknowledges for a week would otherwise page forever. Ten is
+ * enough that the message plainly got through and nobody acted, at which point
+ * more copies of it are not the missing ingredient.
+ */
+export const MAX_ESCALATION_REPEATS = 10;
 
 /* ---------------------------------------------------------------------------
  * Key/value settings

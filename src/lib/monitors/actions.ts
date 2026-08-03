@@ -50,6 +50,7 @@ function readForm(formData: FormData) {
     sloTargetPct: formString(formData, "sloTargetPct", "99.9"),
     paused: formBool(formData, "paused"),
     channelIds: formStrings(formData, "channelIds"),
+    escalationPolicyId: formString(formData, "escalationPolicyId"),
     tags: formString(formData, "tags"),
   };
 
@@ -128,6 +129,7 @@ export async function createMonitorAction(
       dnsMatchMode: v.dnsMatchMode,
       dnsResolver: v.dnsResolver || null,
       sloTargetPct: v.sloTargetPct,
+      escalationPolicyId: v.escalationPolicyId || null,
       paused: v.paused,
       tags: serialiseTags(parseTags(v.tags)),
       // Minted here, not in the form, so the token never round-trips through the
@@ -203,6 +205,7 @@ export async function updateMonitorAction(
       dnsMatchMode: v.dnsMatchMode,
       dnsResolver: v.dnsResolver || null,
       sloTargetPct: v.sloTargetPct,
+      escalationPolicyId: v.escalationPolicyId || null,
       paused: v.paused,
       tags: serialiseTags(parseTags(v.tags)),
       // Converting an existing monitor to a heartbeat needs a token; converting

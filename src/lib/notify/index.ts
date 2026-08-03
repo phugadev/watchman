@@ -160,7 +160,7 @@ export async function notifyMonitor({
   monitorId: string;
   incidentId?: string | null;
   payload: AlertPayload;
-  kind: "opened" | "resolved" | "degraded" | "acknowledged";
+  kind: NotificationKind;
 }): Promise<DeliveryResult[]> {
   const rows = db
     .select({ channel: channels })
@@ -186,6 +186,56 @@ export async function notifyMonitor({
       return result;
     }),
   );
+}
+
+/**
+ * Send to one named channel, regardless of what is attached to the monitor.
+ *
+ * Escalation works this way round: the policy names the channel, and the point of
+ * step two is to reach somewhere the monitor's own channels do not. The
+ * recovery and degraded opt-outs are not consulted — an escalation is by
+ * definition an unacknowledged outage, and a channel that has opted out of
+ * good news has not opted out of that.
+ */
+export async function notifyChannel({
+  channelId,
+  monitorId,
+  incidentId,
+  payload,
+  kind,
+}: {
+  channelId: string;
+  monitorId?: string | null;
+  incidentId?: string | null;
+  payload: AlertPayload;
+  kind: NotificationKind;
+}): Promise<DeliveryResult> {
+  const channel = db
+    .select()
+    .from(channels)
+    .where(eq(channels.id, channelId))
+    .get();
+
+  if (!channel) {
+    return { ok: false, error: "Channel not found", durationMs: 0, attempts: 0 };
+  }
+
+  // A disabled channel is skipped rather than failed: someone turned it off on
+  // purpose, and a red delivery log entry every fifteen seconds is not the way to
+  // tell them their policy still points at it.
+  if (!channel.enabled) {
+    return { ok: false, error: "Channel is disabled", durationMs: 0, attempts: 0 };
+  }
+
+  const result = await deliverWithRetry(channel, payload);
+  recordDelivery({
+    channel,
+    monitorId: monitorId ?? null,
+    incidentId,
+    kind,
+    result,
+  });
+  return result;
 }
 
 /** Send a probe alert to a single channel, for the "Test" button. */
@@ -229,7 +279,7 @@ function recordDelivery({
   channel: Channel;
   monitorId: string | null;
   incidentId?: string | null;
-  kind: "opened" | "resolved" | "degraded" | "acknowledged" | "test";
+  kind: NotificationKind | "test";
   result: DeliveryResult;
 }): void {
   db.insert(notifications)

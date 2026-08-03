@@ -68,10 +68,12 @@ export function MonitorForm({
   monitor,
   channels,
   attachedChannelIds = [],
+  escalationPolicies = [],
 }: {
   monitor?: Monitor;
   channels: { id: string; name: string; kind: string }[];
   attachedChannelIds?: string[];
+  escalationPolicies?: { id: string; name: string }[];
 }) {
   const editing = Boolean(monitor);
   const [state, action] = useActionState(
@@ -579,6 +581,30 @@ export function MonitorForm({
             ))}
           </div>
         )}
+
+        {escalationPolicies.length > 0 ? (
+          <>
+            <Rule />
+            <Field
+              label="Escalation policy"
+              htmlFor="escalationPolicyId"
+              hint="Who to tell next if an incident here goes unacknowledged. Acknowledging it stops the escalation."
+            >
+              <Select
+                id="escalationPolicyId"
+                name="escalationPolicyId"
+                defaultValue={monitor?.escalationPolicyId ?? ""}
+              >
+                <option value="">None — alert once and stop</option>
+                {escalationPolicies.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </>
+        ) : null}
 
         <Rule />
         <Switch

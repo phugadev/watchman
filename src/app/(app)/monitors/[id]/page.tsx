@@ -101,6 +101,7 @@ export default async function MonitorPage({
     recentChecks,
     incidents,
     channels,
+    escalationPolicy,
     dailyTape,
   } = detail;
 
@@ -361,6 +362,29 @@ export default async function MonitorPage({
                   </Code>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Whether an unanswered alert goes anywhere else is part of how this
+              monitor is wired, so it belongs next to the channels rather than
+              only on the page where policies are edited. */}
+          <div className="flex flex-col gap-2">
+            <MonoLabel>escalation</MonoLabel>
+            {escalationPolicy ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Code>{escalationPolicy.name}</Code>
+                <span className="text-[12px] text-ash">
+                  {escalationPolicy.stepCount} step
+                  {escalationPolicy.stepCount === 1 ? "" : "s"}
+                  {escalationPolicy.repeatSec
+                    ? `, repeating every ${formatDuration(escalationPolicy.repeatSec * 1000)}`
+                    : ""}
+                </span>
+              </div>
+            ) : (
+              <p className="text-[12px] text-slate">
+                None — one alert, then silence until it recovers.
+              </p>
             )}
           </div>
 

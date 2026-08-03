@@ -57,6 +57,14 @@ export function renderTelegram(p: AlertPayload): string {
     );
   }
 
+  if (p.incident?.escalation) {
+    const e = p.incident.escalation;
+    lines.push(
+      `<b>Escalated</b> — step ${e.level} of "${escapeHtml(e.policyName)}", unacknowledged for ${formatDuration(e.unacknowledgedForMs)}`,
+    );
+    lines.push("");
+  }
+
   if (p.check?.error) {
     lines.push(`<b>Cause:</b> ${escapeHtml(p.check.error)}`);
   } else if (p.incident?.cause) {

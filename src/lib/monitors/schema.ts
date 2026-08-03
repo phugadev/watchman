@@ -100,6 +100,8 @@ export const monitorFormSchema = z
 
     paused: z.boolean().default(false),
     channelIds: z.array(z.string()).default([]),
+    /** Empty string is "no policy" — a select cannot submit null. */
+    escalationPolicyId: z.string().optional().or(z.literal("")),
     /** Comma-separated in the form; normalised and de-duplicated by parseTags. */
     tags: z.string().max(400).optional().or(z.literal("")),
   })

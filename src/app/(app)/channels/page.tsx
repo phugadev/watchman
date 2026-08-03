@@ -7,8 +7,17 @@ import {
   RotateSecretButton,
   TestChannelButton,
 } from "@/components/channels/channel-forms";
+import {
+  AddStepForm,
+  EditPolicyForm,
+  NewPolicyForm,
+} from "@/components/escalation/policy-forms";
 import { requireUser } from "@/lib/auth/session";
-import { formatAgo, formatMs } from "@/lib/metrics/uptime";
+import { formatAgo, formatDuration, formatMs } from "@/lib/metrics/uptime";
+import {
+  deletePolicyAction,
+  deleteStepAction,
+} from "@/lib/escalation/actions";
 import {
   deleteChannelAction,
   toggleChannelAction,
@@ -19,7 +28,11 @@ import {
   maskSmtpAuth,
   maskWebhookUrl,
 } from "@/lib/notify";
-import { listChannels, listRecentDeliveries } from "@/lib/queries";
+import {
+  listChannels,
+  listEscalationPolicies,
+  listRecentDeliveries,
+} from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Alert channels" };
 export const dynamic = "force-dynamic";
@@ -95,6 +108,7 @@ export default async function ChannelsPage() {
   const user = await requireUser();
   const isAdmin = user.role === "admin";
   const rows = listChannels();
+  const policies = listEscalationPolicies();
   const deliveries = listRecentDeliveries(25);
 
   return (
@@ -189,6 +203,125 @@ export default async function ChannelsPage() {
         </div>
       )}
 
+      {/* ---- escalation policies -----------------------------------------
+           Lives here rather than behind its own nav item: a policy is a list of
+           channels, and this is the page where channels are. */}
+      <section className="flex flex-col gap-3">
+        <SectionHeader label="escalation policies">
+          {isAdmin && rows.length > 0 ? <NewPolicyForm /> : null}
+        </SectionHeader>
+
+        {rows.length === 0 ? (
+          <p className="text-[13px] leading-relaxed text-ash">
+            Escalation needs somewhere to escalate to. Add a channel first.
+          </p>
+        ) : policies.length === 0 ? (
+          <EmptyState
+            title="no escalation policies"
+            hint="A single alert fails silently: it fires into a channel nobody is looking at, and the outage runs until someone notices another way. A policy says who to tell next, and when, if nobody acknowledges."
+          />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {policies.map(({ policy, steps, monitorCount }) => (
+              <Panel key={policy.id} inset className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="truncate text-[14px] font-medium text-bone">
+                      {policy.name}
+                    </span>
+                    <MonoLabel tone="slate">
+                      {steps.length} step{steps.length === 1 ? "" : "s"} ·{" "}
+                      {monitorCount} monitor{monitorCount === 1 ? "" : "s"} ·{" "}
+                      {policy.repeatSec
+                        ? `repeats every ${formatDuration(policy.repeatSec * 1000)}`
+                        : "no repeat"}
+                    </MonoLabel>
+                  </div>
+
+                  {isAdmin ? (
+                    <form action={deletePolicyAction}>
+                      <input type="hidden" name="id" value={policy.id} />
+                      <Button
+                        type="submit"
+                        variant="bracket"
+                        size="sm"
+                        className="hover:text-alarm"
+                      >
+                        delete
+                      </Button>
+                    </form>
+                  ) : null}
+                </div>
+
+                <Rule />
+
+                {steps.length === 0 ? (
+                  <p className="text-[12px] leading-relaxed text-warn">
+                    No steps yet — this policy will not notify anyone.
+                  </p>
+                ) : (
+                  <ol className="flex flex-col">
+                    {steps.map(({ step, channelName, channelKind, channelEnabled }) => (
+                      <li
+                        key={step.id}
+                        className="flex items-center gap-3 border-b border-hairline-soft py-2 last:border-0"
+                      >
+                        <span className="w-6 shrink-0 font-mono text-[11px] text-slate tnum">
+                          {step.position}
+                        </span>
+                        <span className="w-24 shrink-0 font-mono text-[11px] text-amp tnum">
+                          {step.afterSec === 0
+                            ? "immediately"
+                            : `+${formatDuration(step.afterSec * 1000)}`}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] text-bone">
+                          {channelName}
+                        </span>
+                        <MonoLabel tone="slate">{channelKind}</MonoLabel>
+                        {/* A step pointing at a disabled channel is a hole in the
+                            policy that is invisible until the night it matters. */}
+                        {!channelEnabled ? (
+                          <MonoLabel tone="alarm">disabled</MonoLabel>
+                        ) : null}
+                        {isAdmin ? (
+                          <form action={deleteStepAction}>
+                            <input type="hidden" name="id" value={step.id} />
+                            <Button
+                              type="submit"
+                              variant="bracket"
+                              size="sm"
+                              className="hover:text-alarm"
+                            >
+                              remove
+                            </Button>
+                          </form>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {isAdmin ? (
+                  <>
+                    <Rule />
+                    <AddStepForm
+                      policyId={policy.id}
+                      stepCount={steps.length}
+                      channels={rows.map(({ channel }) => ({
+                        id: channel.id,
+                        name: channel.name,
+                        kind: channel.kind,
+                      }))}
+                    />
+                    <EditPolicyForm policy={policy} />
+                  </>
+                ) : null}
+              </Panel>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* ---- webhook contract -------------------------------------------
            Documented in the app, not just the README: whoever writes the
            receiver is usually looking at this screen. */}
@@ -203,7 +336,9 @@ export default async function ChannelsPage() {
             reject anything older than five minutes.
           </p>
           <div className="flex flex-col">
-            <KeyValue k="x-watchman-event">monitor.down · monitor.up · monitor.degraded · test</KeyValue>
+            <KeyValue k="x-watchman-event">
+              monitor.down · monitor.up · monitor.degraded · monitor.escalated · test
+            </KeyValue>
             <KeyValue k="x-watchman-timestamp">unix seconds</KeyValue>
             <KeyValue k="x-watchman-signature">sha256=&lt;hex&gt;</KeyValue>
             <KeyValue k="x-watchman-delivery">idempotency key</KeyValue>

@@ -16,6 +16,8 @@ import { db } from "../src/lib/db/index.ts";
 import {
   channels,
   checks,
+  escalationPolicies,
+  escalationSteps,
   incidentEvents,
   incidents,
   monitorChannels,
@@ -66,6 +68,8 @@ interface Plan {
   keyword?: string;
   dnsRecordType?: "A" | "AAAA" | "CNAME" | "MX" | "NS" | "TXT";
   dnsExpected?: string;
+  /** Attach the seeded escalation policy — the tier:1 monitors. */
+  escalate?: boolean;
 }
 
 /** What a failed check of this kind says, so history and incidents agree. */
@@ -112,6 +116,7 @@ const PLANS: Plan[] = [
     ],
     sloTargetPct: 99.95,
     keyword: "ok",
+    escalate: true,
   },
   {
     name: "Checkout service",
@@ -132,6 +137,7 @@ const PLANS: Plan[] = [
       [17, 41],
     ],
     sloTargetPct: 99.9,
+    escalate: true,
   },
   {
     name: "DNS — example.com",
@@ -260,6 +266,40 @@ async function main() {
     .returning({ id: channels.id })
     .get();
 
+  // Points at the port Mailpit and MailHog listen on, so a dev running either one
+  // can hit "test" and watch a real alert render.
+  const email = db
+    .insert(channels)
+    .values({
+      name: "Local SMTP (Mailpit)",
+      kind: "email",
+      config: JSON.stringify({
+        host: "127.0.0.1",
+        port: 1025,
+        secure: false,
+        from: "watchman@example.com",
+        to: ["oncall@example.com"],
+      }),
+      notifyOnRecovery: true,
+    })
+    .returning({ id: channels.id })
+    .get();
+
+  console.log("[seed] creating an escalation policy…");
+  const policy = db
+    .insert(escalationPolicies)
+    .values({ name: "Tier 1 on-call", repeatSec: 1_800 })
+    .returning({ id: escalationPolicies.id })
+    .get();
+
+  db.insert(escalationSteps)
+    .values([
+      // Page the usual channel at once, then widen if nobody acknowledges.
+      { policyId: policy.id, position: 1, afterSec: 0, channelId: webhook.id },
+      { policyId: policy.id, position: 2, afterSec: 900, channelId: email.id },
+    ])
+    .run();
+
   const now = Date.now();
   const HISTORY_DAYS = 30;
 
@@ -281,6 +321,7 @@ async function main() {
         tags: serialiseTags(plan.tags ?? []),
         dnsRecordType: plan.dnsRecordType ?? null,
         dnsExpected: plan.dnsExpected ?? null,
+        escalationPolicyId: plan.escalate ? policy.id : null,
         heartbeatToken: plan.kind === "heartbeat" ? newHeartbeatToken() : null,
         createdAt: new Date(now - HISTORY_DAYS * DAY),
         createdBy: admin.id,
@@ -446,6 +487,9 @@ async function main() {
   console.log("[seed] done.");
   console.log(`[seed]   sign in with  ${SEED_EMAIL}  /  ${SEED_PASSWORD}`);
   console.log("[seed]   status page   /status/status");
+  console.log(
+    "[seed]   the two tier:1 monitors carry the 'Tier 1 on-call' escalation policy",
+  );
 }
 
 main().catch((err) => {
