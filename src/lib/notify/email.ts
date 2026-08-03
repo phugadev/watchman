@@ -97,7 +97,7 @@ interface SmtpError extends Error {
  * refused). Retrying a 550 three times just writes the same rejection to the log
  * three times.
  */
-function describeSmtpError(err: unknown): {
+export function describeSmtpError(err: unknown): {
   error: string;
   statusCode?: number | null;
   retryable: boolean;
@@ -116,6 +116,27 @@ function describeSmtpError(err: unknown): {
     };
   }
 
+  /*
+   * ESOCKET covers two failures that want opposite fixes, so it is split by the
+   * underlying message before the table is consulted. Reporting a refused
+   * connection as "check the TLS setting" sends someone to toggle encryption
+   * when the real answer is that nothing is listening on that port.
+   */
+  if (e.code === "ESOCKET") {
+    const detail = e.message ?? "";
+    if (detail.includes("ECONNREFUSED")) {
+      return { error: "Connection refused by the SMTP server", retryable: true };
+    }
+    if (/SSL|TLS|wrong version number/i.test(detail)) {
+      return {
+        error:
+          "TLS handshake failed — this port may not use implicit TLS; try turning it off so the session starts plaintext and upgrades",
+        retryable: false,
+      };
+    }
+    return { error: "Could not open a connection to the SMTP server", retryable: true };
+  }
+
   const byCode: Record<string, { message: string; retryable: boolean }> = {
     EAUTH: { message: "SMTP authentication failed", retryable: false },
     EENVELOPE: { message: "SMTP rejected the sender or recipient", retryable: false },
@@ -124,7 +145,6 @@ function describeSmtpError(err: unknown): {
       message: `SMTP timed out after ${DELIVERY_TIMEOUT_MS}ms`,
       retryable: true,
     },
-    ESOCKET: { message: "SMTP connection failed — check the TLS setting", retryable: true },
   };
 
   const known = e.code ? byCode[e.code] : undefined;
