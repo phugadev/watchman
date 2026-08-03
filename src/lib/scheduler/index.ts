@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { checks, monitors, type Monitor } from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { recordCheck, maintenanceState } from "@/lib/incidents/engine";
+import { sweepEscalations } from "@/lib/incidents/sweep";
 import { evaluateHeartbeat, runProbe, specFromMonitor } from "@/lib/probe";
 import { pruneOldData, vacuum } from "./retention";
 import { rollupRecent } from "./rollup";
@@ -25,6 +26,7 @@ interface SchedulerState {
   startedAt: number | null;
   lastRollupAt: number;
   lastPruneAt: number;
+  lastEscalationAt: number;
 }
 
 // Cached on globalThis so dev HMR reuses one loop instead of accumulating timers.
@@ -40,10 +42,20 @@ const state: SchedulerState = (globalForScheduler.__watchmanScheduler ??= {
   startedAt: null,
   lastRollupAt: 0,
   lastPruneAt: 0,
+  lastEscalationAt: 0,
 });
 
 const ROLLUP_EVERY_MS = 60_000;
 const PRUNE_EVERY_MS = 6 * 3_600_000;
+
+/**
+ * How often to look for incidents due an escalation.
+ *
+ * Not every tick: the sweep is a join the check path does not need, and 15s of
+ * granularity on a step measured in minutes is not worth the query. A step set to
+ * fire at 60s therefore fires somewhere in 60–75s.
+ */
+const ESCALATION_EVERY_MS = 15_000;
 
 /** Run one monitor's check and persist the outcome. */
 async function checkMonitor(monitor: Monitor): Promise<void> {
@@ -132,6 +144,13 @@ async function tick(): Promise<void> {
     }
 
     const now = Date.now();
+
+    if (now - state.lastEscalationAt > ESCALATION_EVERY_MS) {
+      state.lastEscalationAt = now;
+      // Awaited rather than fired and forgotten, so a slow channel shows up as a
+      // slow tick instead of as overlapping sweeps double-paging the same step.
+      await sweepEscalations(new Date(now));
+    }
 
     if (now - state.lastRollupAt > ROLLUP_EVERY_MS) {
       state.lastRollupAt = now;

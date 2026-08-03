@@ -87,9 +87,6 @@ export const env = {
   sessionTtlDays: num(process.env.WATCHMAN_SESSION_TTL_DAYS, 30),
   inviteTtlHours: num(process.env.WATCHMAN_INVITE_TTL_HOURS, 72),
 
-  /** Allow anonymous read access to the dashboard (single-user homelab setups). */
-  publicDashboard: bool(process.env.WATCHMAN_PUBLIC_DASHBOARD, false),
-
   /** Identifies Watchman's probes in target access logs. */
   userAgent:
     process.env.WATCHMAN_USER_AGENT ??
@@ -115,6 +112,16 @@ export function assertRuntimeConfig(): void {
   if (isProd && !process.env.WATCHMAN_URL) {
     console.warn(
       `[watchman] WATCHMAN_URL is unset, defaulting to ${env.publicUrl} — heartbeat URLs and status-page links will point there, which is wrong from any other machine`,
+    );
+  }
+
+  // WATCHMAN_PUBLIC_DASHBOARD was declared in the first env sketch and never read by
+  // anything. It was never documented either, so the only way to have set it is by
+  // reading env.ts — and that reader deserves better than silence, since what they
+  // were configuring was authentication.
+  if (process.env.WATCHMAN_PUBLIC_DASHBOARD !== undefined) {
+    console.warn(
+      "[watchman] WATCHMAN_PUBLIC_DASHBOARD was never implemented and has been removed — the dashboard has always required a session. Publish a status page instead: it shows the monitors you choose, to anyone, without exposing target URLs, probe errors, or channel credentials",
     );
   }
 }

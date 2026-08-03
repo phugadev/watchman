@@ -3,7 +3,14 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { Field, FormError, Input, Select, Switch } from "@/components/ui/field";
+import {
+  Field,
+  FormError,
+  Input,
+  Select,
+  Switch,
+  Textarea,
+} from "@/components/ui/field";
 import { Panel, Rule, SectionHeader } from "@/components/ui/frame";
 import { MonoLabel } from "@/components/ui/mono";
 import {
@@ -84,60 +91,7 @@ export function NewChannelForm() {
           </Field>
         </div>
 
-        {kind === "webhook" ? (
-          <Field
-            label="Endpoint URL"
-            htmlFor="ch-url"
-            required
-            hint="Watchman POSTs signed JSON here. A signing secret is generated for you and shown after you save."
-          >
-            <Input
-              id="ch-url"
-              name="url"
-              type="url"
-              placeholder="https://hooks.example.com/watchman"
-              required
-              spellCheck={false}
-            />
-          </Field>
-        ) : (
-          <>
-            <Field
-              label="Bot token"
-              htmlFor="ch-token"
-              required
-              hint="Message @BotFather on Telegram and run /newbot to get one."
-            >
-              <Input
-                id="ch-token"
-                name="botToken"
-                placeholder="123456789:AA…"
-                required
-                spellCheck={false}
-                autoComplete="off"
-              />
-            </Field>
-            <Field
-              label="Chat id"
-              htmlFor="ch-chat"
-              required
-              hint="Your numeric user id, or a @channelname. Add the bot to the chat first, or it cannot post."
-            >
-              <Input
-                id="ch-chat"
-                name="chatId"
-                placeholder="-1001234567890"
-                required
-                spellCheck={false}
-              />
-            </Field>
-            <Switch
-              name="silent"
-              label="Send silently"
-              hint="Delivers without a notification sound. Suitable for a low-priority feed."
-            />
-          </>
-        )}
+        <KindFields kind={kind} />
 
         <Rule />
         <Switch
@@ -158,6 +112,210 @@ export function NewChannelForm() {
       </form>
     </Panel>
   );
+}
+
+/**
+ * The fields that differ per channel type.
+ *
+ * Only the selected kind's inputs are mounted, rather than all five being
+ * rendered and hidden. An unmounted input submits nothing, which is what keeps
+ * the server action from having to work out whether a `botToken` in the payload
+ * of an email channel was meaningful.
+ */
+function KindFields({ kind }: { kind: ChannelKind }) {
+  switch (kind) {
+    case "webhook":
+      return (
+        <Field
+          label="Endpoint URL"
+          htmlFor="ch-url"
+          required
+          hint="Watchman POSTs signed JSON here. A signing secret is generated for you and shown after you save."
+        >
+          <Input
+            id="ch-url"
+            name="url"
+            type="url"
+            placeholder="https://hooks.example.com/watchman"
+            required
+            spellCheck={false}
+          />
+        </Field>
+      );
+
+    case "telegram":
+      return (
+        <>
+          <Field
+            label="Bot token"
+            htmlFor="ch-token"
+            required
+            hint="Message @BotFather on Telegram and run /newbot to get one."
+          >
+            <Input
+              id="ch-token"
+              name="botToken"
+              placeholder="123456789:AA…"
+              required
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </Field>
+          <Field
+            label="Chat id"
+            htmlFor="ch-chat"
+            required
+            hint="Your numeric user id, or a @channelname. Add the bot to the chat first, or it cannot post."
+          >
+            <Input
+              id="ch-chat"
+              name="chatId"
+              placeholder="-1001234567890"
+              required
+              spellCheck={false}
+            />
+          </Field>
+          <Switch
+            name="silent"
+            label="Send silently"
+            hint="Delivers without a notification sound. Suitable for a low-priority feed."
+          />
+        </>
+      );
+
+    case "email":
+      return (
+        <>
+          <div className="grid gap-5 sm:grid-cols-[1fr_8rem]">
+            <Field label="SMTP host" htmlFor="ch-host" required>
+              <Input
+                id="ch-host"
+                name="host"
+                placeholder="smtp.example.com"
+                required
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="Port" htmlFor="ch-port" required>
+              <Input
+                id="ch-port"
+                name="port"
+                type="number"
+                min={1}
+                max={65535}
+                defaultValue={587}
+                required
+              />
+            </Field>
+          </div>
+
+          <Switch
+            name="secure"
+            label="Implicit TLS"
+            hint="On for port 465, where the session is encrypted from the first byte. Leave off for 587, which starts in the clear and upgrades with STARTTLS."
+          />
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Username"
+              htmlFor="ch-user"
+              hint="Leave both blank to relay through an MTA that does not authenticate."
+            >
+              <Input
+                id="ch-user"
+                name="user"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="Password" htmlFor="ch-pass">
+              <Input
+                id="ch-pass"
+                name="pass"
+                type="password"
+                autoComplete="new-password"
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="From"
+            htmlFor="ch-from"
+            required
+            hint="Must be an address the server will accept as a sender, or it will reject the message."
+          >
+            <Input
+              id="ch-from"
+              name="from"
+              placeholder="watchman@example.com"
+              required
+              spellCheck={false}
+            />
+          </Field>
+
+          <Field
+            label="Recipients"
+            htmlFor="ch-to"
+            required
+            hint="One per line, or comma-separated."
+          >
+            <Textarea
+              id="ch-to"
+              name="to"
+              rows={3}
+              placeholder={"oncall@example.com\nops@example.com"}
+              required
+              spellCheck={false}
+            />
+          </Field>
+        </>
+      );
+
+    case "slack":
+      return (
+        <Field
+          label="Incoming webhook URL"
+          htmlFor="ch-slack"
+          required
+          hint="Slack → your app → Incoming Webhooks → Add New Webhook to Workspace. The URL is the credential; it chooses the channel too."
+        >
+          <Input
+            id="ch-slack"
+            name="webhookUrl"
+            type="url"
+            placeholder="https://hooks.slack.com/services/T00/B00/xxxx"
+            required
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </Field>
+      );
+
+    case "discord":
+      return (
+        <Field
+          label="Webhook URL"
+          htmlFor="ch-discord"
+          required
+          hint="Channel settings → Integrations → Webhooks → New Webhook, then Copy Webhook URL."
+        >
+          <Input
+            id="ch-discord"
+            name="webhookUrl"
+            type="url"
+            placeholder="https://discord.com/api/webhooks/123/xxxx"
+            required
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </Field>
+      );
+
+    default: {
+      const exhaustive: never = kind;
+      return <FormError>Unsupported channel type: {String(exhaustive)}</FormError>;
+    }
+  }
 }
 
 /**

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import {
   channels,
   checks,
+  escalationPolicies,
+  escalationSteps,
   incidentEvents,
   incidents,
   invites,
@@ -373,8 +375,31 @@ export function getMonitorDetail(id: string, windowKey: WindowKey = "24h") {
     .all()
     .map((r) => r.channel);
 
+  const policy = monitor.escalationPolicyId
+    ? db
+        .select()
+        .from(escalationPolicies)
+        .where(eq(escalationPolicies.id, monitor.escalationPolicyId))
+        .get()
+    : undefined;
+
+  const escalationPolicy = policy
+    ? {
+        id: policy.id,
+        name: policy.name,
+        repeatSec: policy.repeatSec,
+        stepCount:
+          db
+            .select({ n: sql<number>`count(*)` })
+            .from(escalationSteps)
+            .where(eq(escalationSteps.policyId, policy.id))
+            .get()?.n ?? 0,
+      }
+    : null;
+
   return {
     monitor,
+    escalationPolicy,
     status: effectiveStatus(monitor),
     windowKey,
     series,
@@ -709,6 +734,41 @@ export function listChannels() {
           .select({ n: sql<number>`count(*)` })
           .from(monitorChannels)
           .where(eq(monitorChannels.channelId, channel.id))
+          .get()?.n ?? 0,
+    }));
+}
+
+/**
+ * Escalation policies with their steps resolved to channel names.
+ *
+ * The monitor count is what tells an admin whether deleting one is safe, so it is
+ * part of the listing rather than something to go and find.
+ */
+export function listEscalationPolicies() {
+  return db
+    .select()
+    .from(escalationPolicies)
+    .orderBy(escalationPolicies.name)
+    .all()
+    .map((policy) => ({
+      policy,
+      steps: db
+        .select({
+          step: escalationSteps,
+          channelName: channels.name,
+          channelKind: channels.kind,
+          channelEnabled: channels.enabled,
+        })
+        .from(escalationSteps)
+        .innerJoin(channels, eq(channels.id, escalationSteps.channelId))
+        .where(eq(escalationSteps.policyId, policy.id))
+        .orderBy(escalationSteps.position)
+        .all(),
+      monitorCount:
+        db
+          .select({ n: sql<number>`count(*)` })
+          .from(monitors)
+          .where(eq(monitors.escalationPolicyId, policy.id))
           .get()?.n ?? 0,
     }));
 }

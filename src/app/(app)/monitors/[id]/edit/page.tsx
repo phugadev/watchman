@@ -6,7 +6,7 @@ import { monitorChannels } from "@/lib/db/schema";
 import { SectionHeader } from "@/components/ui/frame";
 import { MonitorForm } from "@/components/monitors/monitor-form";
 import { requireUser } from "@/lib/auth/session";
-import { getMonitor, listChannels } from "@/lib/queries";
+import { getMonitor, listChannels, listEscalationPolicies } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Edit monitor" };
 
@@ -46,6 +46,10 @@ export default async function EditMonitorPage({
           kind: channel.kind,
         }))}
         attachedChannelIds={attached}
+        escalationPolicies={listEscalationPolicies().map(({ policy }) => ({
+          id: policy.id,
+          name: policy.name,
+        }))}
       />
     </div>
   );

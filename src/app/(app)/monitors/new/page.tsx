@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { SectionHeader } from "@/components/ui/frame";
 import { MonitorForm } from "@/components/monitors/monitor-form";
 import { requireUser } from "@/lib/auth/session";
-import { listChannels } from "@/lib/queries";
+import { listChannels, listEscalationPolicies } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "New monitor" };
 
 export default async function NewMonitorPage() {
   await requireUser();
   const channels = listChannels();
+  const policies = listEscalationPolicies();
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,6 +29,10 @@ export default async function NewMonitorPage() {
         // A new monitor with no channel is the most common way a self-hosted setup
         // ends up recording outages nobody hears about, so pre-select everything.
         attachedChannelIds={channels.map(({ channel }) => channel.id)}
+        escalationPolicies={policies.map(({ policy }) => ({
+          id: policy.id,
+          name: policy.name,
+        }))}
       />
     </div>
   );

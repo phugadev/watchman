@@ -6,6 +6,7 @@ import { probeHttp } from "../src/lib/probe/http.ts";
 import { probeTcp } from "../src/lib/probe/tcp.ts";
 import { probeSsl } from "../src/lib/probe/ssl.ts";
 import { probePing } from "../src/lib/probe/ping.ts";
+import { probeDns } from "../src/lib/probe/dns.ts";
 import { evaluateHeartbeat } from "../src/lib/probe/heartbeat.ts";
 import type { ProbeResult } from "../src/lib/probe/types.ts";
 
@@ -34,6 +35,18 @@ show("ssl example.com", await probeSsl({ kind: "ssl", target: "example.com" }));
 show("ssl expired", await probeSsl({ kind: "ssl", target: "expired.badssl.com", timeoutMs: 9000 }));
 show("ssl self-signed", await probeSsl({ kind: "ssl", target: "self-signed.badssl.com", timeoutMs: 9000 }));
 show("ssl warn 3650d", await probeSsl({ kind: "ssl", target: "example.com", sslWarnDays: 3650 }));
+show("dns A", await probeDns({ kind: "dns", target: "example.com", dnsRecordType: "A" }));
+show("dns A expect hit", await probeDns({ kind: "dns", target: "one.one.one.one", dnsRecordType: "A", dnsExpected: "1.1.1.1" }));
+show("dns A expect miss", await probeDns({ kind: "dns", target: "example.com", dnsRecordType: "A", dnsExpected: "10.0.0.1" }));
+show("dns exact extra rec", await probeDns({ kind: "dns", target: "one.one.one.one", dnsRecordType: "A", dnsExpected: "1.1.1.1", dnsMatchMode: "exact" }));
+show("dns MX", await probeDns({ kind: "dns", target: "gmail.com", dnsRecordType: "MX" }));
+show("dns TXT chunked", await probeDns({ kind: "dns", target: "google.com", dnsRecordType: "TXT" }));
+show("dns CAA", await probeDns({ kind: "dns", target: "google.com", dnsRecordType: "CAA" }));
+show("dns SOA", await probeDns({ kind: "dns", target: "example.com", dnsRecordType: "SOA" }));
+show("dns nxdomain", await probeDns({ kind: "dns", target: "nope-abc123.invalid", dnsRecordType: "A" }));
+show("dns no such rrtype", await probeDns({ kind: "dns", target: "example.com", dnsRecordType: "SRV" }));
+show("dns via 1.1.1.1", await probeDns({ kind: "dns", target: "example.com", dnsRecordType: "A", dnsResolver: "1.1.1.1" }));
+show("dns dead resolver", await probeDns({ kind: "dns", target: "example.com", dnsRecordType: "A", dnsResolver: "192.0.2.1", timeoutMs: 3000 }));
 show("ping 1.1.1.1", await probePing({ kind: "ping", target: "1.1.1.1", timeoutMs: 4000 }));
 show("ping bad host", await probePing({ kind: "ping", target: "nope-abc123.invalid", timeoutMs: 4000 }));
 

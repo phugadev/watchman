@@ -1,4 +1,5 @@
 import type { Monitor } from "@/lib/db/schema";
+import { probeDns } from "./dns";
 import { probeHttp } from "./http";
 import { probePing } from "./ping";
 import { probeSsl } from "./ssl";
@@ -8,7 +9,8 @@ import type { ProbeResult, ProbeSpec } from "./types";
 
 export * from "./types";
 export * from "./assertions";
-export { probeHttp, probePing, probeSsl, probeTcp, evaluateHeartbeat };
+export * from "./dns";
+export { probeHttp, probePing, probeSsl, probeTcp, probeDns, evaluateHeartbeat };
 
 /** Build the probe input from a stored monitor row. */
 export function specFromMonitor(m: Monitor): ProbeSpec {
@@ -40,6 +42,10 @@ export function specFromMonitor(m: Monitor): ProbeSpec {
     timeoutMs: m.timeoutMs,
     degradedMs: m.degradedMs,
     sslWarnDays: m.sslWarnDays,
+    dnsRecordType: m.dnsRecordType,
+    dnsExpected: m.dnsExpected,
+    dnsMatchMode: m.dnsMatchMode,
+    dnsResolver: m.dnsResolver,
   };
 }
 
@@ -60,6 +66,8 @@ export async function runProbe(spec: ProbeSpec): Promise<ProbeResult> {
       return probePing(spec);
     case "ssl":
       return probeSsl(spec);
+    case "dns":
+      return probeDns(spec);
     case "heartbeat":
       return {
         ok: false,
@@ -85,6 +93,7 @@ export const KIND_LABEL: Record<Monitor["kind"], string> = {
   tcp: "TCP",
   ping: "Ping",
   ssl: "TLS cert",
+  dns: "DNS",
   heartbeat: "Heartbeat",
 };
 
@@ -93,5 +102,6 @@ export const KIND_HINT: Record<Monitor["kind"], string> = {
   tcp: "Open a TCP connection to host:port. For anything that isn't HTTP.",
   ping: "ICMP echo. Reachability only — no application-level guarantee.",
   ssl: "Watch a certificate's expiry and trust chain before it bites.",
+  dns: "Resolve a name and assert on the answer. Catches a zone breaking or being changed under you.",
   heartbeat: "A dead man's switch: alert when a job stops checking in.",
 };

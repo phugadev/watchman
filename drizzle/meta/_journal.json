@@ -15,6 +15,20 @@
       "when": 1785426219182,
       "tag": "0001_happy_spencer_smythe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785769517779,
+      "tag": "0002_concerned_star_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785770063006,
+      "tag": "0003_little_abomination",
+      "breakpoints": true
     }
   ]
 }

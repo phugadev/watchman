@@ -32,7 +32,7 @@ import {
   deleteMonitorAction,
   togglePauseAction,
 } from "@/lib/monitors/actions";
-import { KIND_LABEL } from "@/lib/probe";
+import { KIND_LABEL, parseExpectedRecords } from "@/lib/probe";
 import { getMonitorDetail } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -101,6 +101,7 @@ export default async function MonitorPage({
     recentChecks,
     incidents,
     channels,
+    escalationPolicy,
     dailyTape,
   } = detail;
 
@@ -316,6 +317,17 @@ export default async function MonitorPage({
                 <KeyValue k="verify tls">{monitor.verifyTls ? "yes" : "no"}</KeyValue>
               </>
             ) : null}
+            {monitor.kind === "dns" ? (
+              <>
+                <KeyValue k="record">{monitor.dnsRecordType ?? "A"}</KeyValue>
+                <KeyValue k="resolver">{monitor.dnsResolver ?? "system"}</KeyValue>
+                <KeyValue k="expects">
+                  {monitor.dnsExpected
+                    ? `${monitor.dnsMatchMode === "exact" ? "exactly" : "at least"} ${parseExpectedRecords(monitor.dnsExpected).join(", ")}`
+                    : "any answer"}
+                </KeyValue>
+              </>
+            ) : null}
             <KeyValue k="interval">{formatDuration(monitor.intervalSec * 1000)}</KeyValue>
             {monitor.kind !== "heartbeat" ? (
               <KeyValue k="timeout">{formatMs(monitor.timeoutMs)}</KeyValue>
@@ -350,6 +362,29 @@ export default async function MonitorPage({
                   </Code>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Whether an unanswered alert goes anywhere else is part of how this
+              monitor is wired, so it belongs next to the channels rather than
+              only on the page where policies are edited. */}
+          <div className="flex flex-col gap-2">
+            <MonoLabel>escalation</MonoLabel>
+            {escalationPolicy ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Code>{escalationPolicy.name}</Code>
+                <span className="text-[12px] text-ash">
+                  {escalationPolicy.stepCount} step
+                  {escalationPolicy.stepCount === 1 ? "" : "s"}
+                  {escalationPolicy.repeatSec
+                    ? `, repeating every ${formatDuration(escalationPolicy.repeatSec * 1000)}`
+                    : ""}
+                </span>
+              </div>
+            ) : (
+              <p className="text-[12px] text-slate">
+                None — one alert, then silence until it recovers.
+              </p>
             )}
           </div>
 

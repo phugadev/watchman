@@ -1,5 +1,20 @@
 import { z } from "zod";
-import { MONITOR_KINDS } from "@/lib/db/schema";
+import { DNS_RECORD_TYPES, MONITOR_KINDS } from "@/lib/db/schema";
+
+/**
+ * Is this a bare IPv4 or IPv6 literal?
+ *
+ * Deliberately loose on IPv6 — the grammar with `::` elision is not worth
+ * reimplementing here, and the resolver rejects a malformed one at setup with a
+ * clear message. This only has to catch "someone typed a hostname".
+ */
+function isIpAddress(value: string): boolean {
+  const v4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (v4.test(value)) {
+    return value.split(".").every((o) => Number(o) <= 255);
+  }
+  return /^[0-9a-fA-F:]+$/.test(value) && value.includes(":");
+}
 
 /**
  * Validation for the monitor form.
@@ -76,10 +91,17 @@ export const monitorFormSchema = z
 
     graceSec: z.coerce.number().int().min(0).max(86_400).default(120),
     sslWarnDays: z.coerce.number().int().min(1).max(365).default(21),
+
+    dnsRecordType: z.enum(DNS_RECORD_TYPES).default("A"),
+    dnsExpected: z.string().max(2000).optional().or(z.literal("")),
+    dnsMatchMode: z.enum(["contains", "exact"]).default("contains"),
+    dnsResolver: trimmed.max(45).optional().or(z.literal("")),
     sloTargetPct: z.coerce.number().min(50).max(100).default(99.9),
 
     paused: z.boolean().default(false),
     channelIds: z.array(z.string()).default([]),
+    /** Empty string is "no policy" — a select cannot submit null. */
+    escalationPolicyId: z.string().optional().or(z.literal("")),
     /** Comma-separated in the form; normalised and de-duplicated by parseTags. */
     tags: z.string().max(400).optional().or(z.literal("")),
   })
@@ -134,6 +156,31 @@ export const monitorFormSchema = z
         requireTarget("A hostname is required");
         break;
 
+      case "dns": {
+        if (!requireTarget("A hostname is required")) break;
+
+        // A resolver typed as a hostname would itself need resolving, which is a
+        // dependency loop nobody wants inside a DNS check. Require a literal.
+        if (data.dnsResolver && !isIpAddress(data.dnsResolver)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["dnsResolver"],
+            message: "Use an IP address, e.g. 1.1.1.1 — a hostname would need resolving first",
+          });
+        }
+
+        // `exact` with nothing to match against would fail every check, since no
+        // answer can equal an empty set.
+        if (data.dnsMatchMode === "exact" && !data.dnsExpected?.trim()) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["dnsExpected"],
+            message: "Exact matching needs the full expected answer",
+          });
+        }
+        break;
+      }
+
       case "heartbeat":
         // Nothing to reach — the job calls us.
         break;
@@ -172,6 +219,9 @@ export const DEFAULT_INTERVAL: Record<(typeof MONITOR_KINDS)[number], number> = 
   ping: 60,
   // Certificates change on the scale of months; polling one every minute is waste.
   ssl: 21_600,
+  // Records change rarely, and a resolver's cache means a tighter interval mostly
+  // measures the cache rather than the zone.
+  dns: 300,
   // For a heartbeat, the interval is the job's own schedule.
   heartbeat: 3_600,
 };
@@ -184,6 +234,7 @@ export const TARGET_PLACEHOLDER: Record<
   tcp: "db.internal:5432",
   ping: "192.168.1.1",
   ssl: "example.com",
+  dns: "example.com",
   heartbeat: "",
 };
 
@@ -192,5 +243,6 @@ export const TARGET_LABEL: Record<(typeof MONITOR_KINDS)[number], string> = {
   tcp: "Host and port",
   ping: "Hostname or IP",
   ssl: "Hostname",
+  dns: "Name to resolve",
   heartbeat: "Ping URL",
 };

@@ -7,14 +7,32 @@ import {
   RotateSecretButton,
   TestChannelButton,
 } from "@/components/channels/channel-forms";
+import {
+  AddStepForm,
+  EditPolicyForm,
+  NewPolicyForm,
+} from "@/components/escalation/policy-forms";
 import { requireUser } from "@/lib/auth/session";
-import { formatAgo, formatMs } from "@/lib/metrics/uptime";
+import { formatAgo, formatDuration, formatMs } from "@/lib/metrics/uptime";
+import {
+  deletePolicyAction,
+  deleteStepAction,
+} from "@/lib/escalation/actions";
 import {
   deleteChannelAction,
   toggleChannelAction,
 } from "@/lib/notify/actions";
-import { CHANNEL_LABEL, maskBotToken } from "@/lib/notify";
-import { listChannels, listRecentDeliveries } from "@/lib/queries";
+import {
+  CHANNEL_LABEL,
+  maskBotToken,
+  maskSmtpAuth,
+  maskWebhookUrl,
+} from "@/lib/notify";
+import {
+  listChannels,
+  listEscalationPolicies,
+  listRecentDeliveries,
+} from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Alert channels" };
 export const dynamic = "force-dynamic";
@@ -33,21 +51,54 @@ function describeConfig(kind: string, raw: string): { label: string; value: stri
   const str = (v: unknown, fallback = "—") =>
     typeof v === "string" ? v : fallback;
 
-  if (kind === "webhook") {
-    return [
-      { label: "endpoint", value: str(parsed.url) },
-      // Only a prefix: enough to tell two channels apart, useless to an attacker.
-      {
-        label: "signing secret",
-        value: `${str(parsed.secret, "").slice(0, 6)}${"•".repeat(12)}`,
-      },
-    ];
-  }
+  switch (kind) {
+    case "webhook":
+      return [
+        { label: "endpoint", value: str(parsed.url) },
+        // Only a prefix: enough to tell two channels apart, useless to an attacker.
+        {
+          label: "signing secret",
+          value: `${str(parsed.secret, "").slice(0, 6)}${"•".repeat(12)}`,
+        },
+      ];
 
-  return [
-    { label: "bot", value: maskBotToken(str(parsed.botToken, "")) },
-    { label: "chat", value: str(parsed.chatId) },
-  ];
+    case "email": {
+      const to = Array.isArray(parsed.to)
+        ? parsed.to.filter((v): v is string => typeof v === "string")
+        : [];
+      return [
+        {
+          label: "server",
+          value: `${str(parsed.host)}:${typeof parsed.port === "number" ? parsed.port : "?"}${parsed.secure === true ? " · TLS" : ""}`,
+        },
+        { label: "auth", value: maskSmtpAuth(str(parsed.user, "")) },
+        { label: "from", value: str(parsed.from) },
+        {
+          // The full list of a dozen addresses would push everything else off the
+          // card; the count is what you check, the first one identifies it.
+          label: "to",
+          value:
+            to.length === 0
+              ? "—"
+              : to.length === 1
+                ? to[0]!
+                : `${to[0]!} +${to.length - 1} more`,
+        },
+      ];
+    }
+
+    case "slack":
+    case "discord":
+      // The whole URL is the credential — it carries no user-identifying part, so
+      // there is nothing to show but enough of the host to confirm the provider.
+      return [{ label: "webhook", value: maskWebhookUrl(str(parsed.webhookUrl, "")) }];
+
+    default:
+      return [
+        { label: "bot", value: maskBotToken(str(parsed.botToken, "")) },
+        { label: "chat", value: str(parsed.chatId) },
+      ];
+  }
 }
 
 export default async function ChannelsPage() {
@@ -57,6 +108,7 @@ export default async function ChannelsPage() {
   const user = await requireUser();
   const isAdmin = user.role === "admin";
   const rows = listChannels();
+  const policies = listEscalationPolicies();
   const deliveries = listRecentDeliveries(25);
 
   return (
@@ -68,7 +120,7 @@ export default async function ChannelsPage() {
       {rows.length === 0 ? (
         <EmptyState
           title="no alert channels"
-          hint="Without a channel, Watchman records outages but tells nobody. Add a webhook for full control, or a Telegram bot for the fastest path to a phone buzzing."
+          hint="Without a channel, Watchman records outages but tells nobody. Email reaches people who are not in your chat tool; Slack, Discord, and Telegram are the fastest path to a phone buzzing; a webhook makes every other integration someone else's problem."
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -151,6 +203,125 @@ export default async function ChannelsPage() {
         </div>
       )}
 
+      {/* ---- escalation policies -----------------------------------------
+           Lives here rather than behind its own nav item: a policy is a list of
+           channels, and this is the page where channels are. */}
+      <section className="flex flex-col gap-3">
+        <SectionHeader label="escalation policies">
+          {isAdmin && rows.length > 0 ? <NewPolicyForm /> : null}
+        </SectionHeader>
+
+        {rows.length === 0 ? (
+          <p className="text-[13px] leading-relaxed text-ash">
+            Escalation needs somewhere to escalate to. Add a channel first.
+          </p>
+        ) : policies.length === 0 ? (
+          <EmptyState
+            title="no escalation policies"
+            hint="A single alert fails silently: it fires into a channel nobody is looking at, and the outage runs until someone notices another way. A policy says who to tell next, and when, if nobody acknowledges."
+          />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {policies.map(({ policy, steps, monitorCount }) => (
+              <Panel key={policy.id} inset className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="truncate text-[14px] font-medium text-bone">
+                      {policy.name}
+                    </span>
+                    <MonoLabel tone="slate">
+                      {steps.length} step{steps.length === 1 ? "" : "s"} ·{" "}
+                      {monitorCount} monitor{monitorCount === 1 ? "" : "s"} ·{" "}
+                      {policy.repeatSec
+                        ? `repeats every ${formatDuration(policy.repeatSec * 1000)}`
+                        : "no repeat"}
+                    </MonoLabel>
+                  </div>
+
+                  {isAdmin ? (
+                    <form action={deletePolicyAction}>
+                      <input type="hidden" name="id" value={policy.id} />
+                      <Button
+                        type="submit"
+                        variant="bracket"
+                        size="sm"
+                        className="hover:text-alarm"
+                      >
+                        delete
+                      </Button>
+                    </form>
+                  ) : null}
+                </div>
+
+                <Rule />
+
+                {steps.length === 0 ? (
+                  <p className="text-[12px] leading-relaxed text-warn">
+                    No steps yet — this policy will not notify anyone.
+                  </p>
+                ) : (
+                  <ol className="flex flex-col">
+                    {steps.map(({ step, channelName, channelKind, channelEnabled }) => (
+                      <li
+                        key={step.id}
+                        className="flex items-center gap-3 border-b border-hairline-soft py-2 last:border-0"
+                      >
+                        <span className="w-6 shrink-0 font-mono text-[11px] text-slate tnum">
+                          {step.position}
+                        </span>
+                        <span className="w-24 shrink-0 font-mono text-[11px] text-amp tnum">
+                          {step.afterSec === 0
+                            ? "immediately"
+                            : `+${formatDuration(step.afterSec * 1000)}`}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] text-bone">
+                          {channelName}
+                        </span>
+                        <MonoLabel tone="slate">{channelKind}</MonoLabel>
+                        {/* A step pointing at a disabled channel is a hole in the
+                            policy that is invisible until the night it matters. */}
+                        {!channelEnabled ? (
+                          <MonoLabel tone="alarm">disabled</MonoLabel>
+                        ) : null}
+                        {isAdmin ? (
+                          <form action={deleteStepAction}>
+                            <input type="hidden" name="id" value={step.id} />
+                            <Button
+                              type="submit"
+                              variant="bracket"
+                              size="sm"
+                              className="hover:text-alarm"
+                            >
+                              remove
+                            </Button>
+                          </form>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {isAdmin ? (
+                  <>
+                    <Rule />
+                    <AddStepForm
+                      policyId={policy.id}
+                      stepCount={steps.length}
+                      channels={rows.map(({ channel }) => ({
+                        id: channel.id,
+                        name: channel.name,
+                        kind: channel.kind,
+                      }))}
+                    />
+                    <EditPolicyForm policy={policy} />
+                  </>
+                ) : null}
+              </Panel>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* ---- webhook contract -------------------------------------------
            Documented in the app, not just the README: whoever writes the
            receiver is usually looking at this screen. */}
@@ -165,7 +336,9 @@ export default async function ChannelsPage() {
             reject anything older than five minutes.
           </p>
           <div className="flex flex-col">
-            <KeyValue k="x-watchman-event">monitor.down · monitor.up · monitor.degraded · test</KeyValue>
+            <KeyValue k="x-watchman-event">
+              monitor.down · monitor.up · monitor.degraded · monitor.escalated · test
+            </KeyValue>
             <KeyValue k="x-watchman-timestamp">unix seconds</KeyValue>
             <KeyValue k="x-watchman-signature">sha256=&lt;hex&gt;</KeyValue>
             <KeyValue k="x-watchman-delivery">idempotency key</KeyValue>
