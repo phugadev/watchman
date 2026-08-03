@@ -13,7 +13,12 @@ import {
   deleteChannelAction,
   toggleChannelAction,
 } from "@/lib/notify/actions";
-import { CHANNEL_LABEL, maskBotToken } from "@/lib/notify";
+import {
+  CHANNEL_LABEL,
+  maskBotToken,
+  maskSmtpAuth,
+  maskWebhookUrl,
+} from "@/lib/notify";
 import { listChannels, listRecentDeliveries } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Alert channels" };
@@ -33,21 +38,54 @@ function describeConfig(kind: string, raw: string): { label: string; value: stri
   const str = (v: unknown, fallback = "—") =>
     typeof v === "string" ? v : fallback;
 
-  if (kind === "webhook") {
-    return [
-      { label: "endpoint", value: str(parsed.url) },
-      // Only a prefix: enough to tell two channels apart, useless to an attacker.
-      {
-        label: "signing secret",
-        value: `${str(parsed.secret, "").slice(0, 6)}${"•".repeat(12)}`,
-      },
-    ];
-  }
+  switch (kind) {
+    case "webhook":
+      return [
+        { label: "endpoint", value: str(parsed.url) },
+        // Only a prefix: enough to tell two channels apart, useless to an attacker.
+        {
+          label: "signing secret",
+          value: `${str(parsed.secret, "").slice(0, 6)}${"•".repeat(12)}`,
+        },
+      ];
 
-  return [
-    { label: "bot", value: maskBotToken(str(parsed.botToken, "")) },
-    { label: "chat", value: str(parsed.chatId) },
-  ];
+    case "email": {
+      const to = Array.isArray(parsed.to)
+        ? parsed.to.filter((v): v is string => typeof v === "string")
+        : [];
+      return [
+        {
+          label: "server",
+          value: `${str(parsed.host)}:${typeof parsed.port === "number" ? parsed.port : "?"}${parsed.secure === true ? " · TLS" : ""}`,
+        },
+        { label: "auth", value: maskSmtpAuth(str(parsed.user, "")) },
+        { label: "from", value: str(parsed.from) },
+        {
+          // The full list of a dozen addresses would push everything else off the
+          // card; the count is what you check, the first one identifies it.
+          label: "to",
+          value:
+            to.length === 0
+              ? "—"
+              : to.length === 1
+                ? to[0]!
+                : `${to[0]!} +${to.length - 1} more`,
+        },
+      ];
+    }
+
+    case "slack":
+    case "discord":
+      // The whole URL is the credential — it carries no user-identifying part, so
+      // there is nothing to show but enough of the host to confirm the provider.
+      return [{ label: "webhook", value: maskWebhookUrl(str(parsed.webhookUrl, "")) }];
+
+    default:
+      return [
+        { label: "bot", value: maskBotToken(str(parsed.botToken, "")) },
+        { label: "chat", value: str(parsed.chatId) },
+      ];
+  }
 }
 
 export default async function ChannelsPage() {
@@ -68,7 +106,7 @@ export default async function ChannelsPage() {
       {rows.length === 0 ? (
         <EmptyState
           title="no alert channels"
-          hint="Without a channel, Watchman records outages but tells nobody. Add a webhook for full control, or a Telegram bot for the fastest path to a phone buzzing."
+          hint="Without a channel, Watchman records outages but tells nobody. Email reaches people who are not in your chat tool; Slack, Discord, and Telegram are the fastest path to a phone buzzing; a webhook makes every other integration someone else's problem."
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">

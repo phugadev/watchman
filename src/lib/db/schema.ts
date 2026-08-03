@@ -347,7 +347,13 @@ export const incidentEvents = sqliteTable(
  * Notification channels
  * ------------------------------------------------------------------------- */
 
-export const CHANNEL_KINDS = ["webhook", "telegram"] as const;
+export const CHANNEL_KINDS = [
+  "webhook",
+  "telegram",
+  "email",
+  "slack",
+  "discord",
+] as const;
 export type ChannelKind = (typeof CHANNEL_KINDS)[number];
 
 export const channels = sqliteTable("channels", {

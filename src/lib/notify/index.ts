@@ -6,6 +6,9 @@ import {
   notifications,
   type Channel,
 } from "@/lib/db/schema";
+import { deliverDiscord } from "./discord";
+import { deliverEmail } from "./email";
+import { deliverSlack } from "./slack";
 import { deliverTelegram } from "./telegram";
 import { deliverWebhook } from "./webhook";
 import {
@@ -13,21 +16,80 @@ import {
   configSchemas,
   type AlertPayload,
   type DeliveryResult,
+  type DiscordConfig,
+  type EmailConfig,
+  type SlackConfig,
+  type TelegramConfig,
+  type WebhookConfig,
 } from "./types";
 
 export * from "./types";
-export { renderSubject, renderTelegram, renderText } from "./render";
+export {
+  renderDiscord,
+  renderEmailHtml,
+  renderSlack,
+  renderSubject,
+  renderTelegram,
+  renderText,
+} from "./render";
 export { signWebhook, verifyWebhook } from "./webhook";
 export { maskBotToken } from "./telegram";
+export { maskSmtpAuth } from "./email";
+export { maskWebhookUrl } from "./slack";
+
+/**
+ * Route a channel to its delivery function.
+ *
+ * The config has already been through the matching zod schema, so the cast is
+ * narrowing a validated value rather than asserting over an unknown one. The
+ * `never` fallthrough makes adding a kind to CHANNEL_KINDS without wiring it a
+ * compile error instead of a silent no-op during an outage.
+ */
+function deliver(
+  kind: Channel["kind"],
+  config: unknown,
+  payload: AlertPayload,
+): Promise<DeliveryResult> {
+  switch (kind) {
+    case "webhook":
+      return deliverWebhook(config as WebhookConfig, payload);
+    case "telegram":
+      return deliverTelegram(config as TelegramConfig, payload);
+    case "email":
+      return deliverEmail(config as EmailConfig, payload);
+    case "slack":
+      return deliverSlack(config as SlackConfig, payload);
+    case "discord":
+      return deliverDiscord(config as DiscordConfig, payload);
+    default: {
+      const exhaustive: never = kind;
+      return Promise.resolve({
+        ok: false,
+        error: `Unknown channel kind: ${String(exhaustive)}`,
+        durationMs: 0,
+        attempts: 0,
+      });
+    }
+  }
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** What a delivery was for. Mirrors the `notifications.kind` column. */
+export type NotificationKind =
+  | "opened"
+  | "resolved"
+  | "degraded"
+  | "acknowledged"
+  | "escalated";
 
 /**
  * Send one alert to one channel, retrying transient failures.
  *
- * Only 5xx, 429, and network-level errors are retried. Retrying a 400 or 404
- * cannot succeed — the URL or payload is wrong — and would just triple the noise
- * in the delivery log while delaying the tick.
+ * For the HTTP channels, only 5xx, 429, and network-level errors are retried.
+ * Retrying a 400 or 404 cannot succeed — the URL or payload is wrong — and would
+ * just triple the noise in the delivery log while delaying the tick. SMTP
+ * classifies its own failures, since there the 4xx/5xx meanings are reversed.
  */
 async function deliverWithRetry(
   channel: Channel,
@@ -53,22 +115,17 @@ async function deliverWithRetry(
   };
 
   for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
-    last =
-      channel.kind === "webhook"
-        ? await deliverWebhook(
-            parsed.data as import("./types").WebhookConfig,
-            payload,
-          )
-        : await deliverTelegram(
-            parsed.data as import("./types").TelegramConfig,
-            payload,
-          );
+    last = await deliver(channel.kind, parsed.data, payload);
 
     last.attempts = attempt;
     if (last.ok) return last;
 
+    // A channel that knows its own protocol decides for itself; the rest fall
+    // back to the HTTP reading, where a 5xx is the server's problem and a 4xx is
+    // ours and will not improve on the next try.
     const status = last.statusCode ?? 0;
-    const retryable = status === 0 || status === 429 || status >= 500;
+    const retryable =
+      last.retryable ?? (status === 0 || status === 429 || status >= 500);
     if (!retryable) return last;
 
     const delay = RETRY_DELAYS_MS[attempt - 1];
