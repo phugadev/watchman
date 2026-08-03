@@ -119,6 +119,12 @@ file rather than by settings someone clicked into a database.
 Incidents and their timelines are never pruned. They are the audit trail, they are
 small, and losing them quietly would be worse than the disk they cost.
 
+There is deliberately no variable that opens the dashboard to anonymous visitors. The
+dashboard shows target URLs, raw probe errors, heartbeat tokens, and channel
+credentials, so a session is the point rather than an obstacle. To show monitors to
+people who should not have accounts, publish a status page — it does the same job with
+the blast radius chosen by you.
+
 ## Tags
 
 Monitors take comma-separated tags — `prod, api, tier:1`. They are normalised on save
