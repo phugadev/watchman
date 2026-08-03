@@ -94,8 +94,35 @@ export const invites = sqliteTable(
  * Monitors
  * ------------------------------------------------------------------------- */
 
-export const MONITOR_KINDS = ["http", "tcp", "ping", "ssl", "heartbeat"] as const;
+export const MONITOR_KINDS = [
+  "http",
+  "tcp",
+  "ping",
+  "ssl",
+  "dns",
+  "heartbeat",
+] as const;
 export type MonitorKind = (typeof MONITOR_KINDS)[number];
+
+/**
+ * Record types a DNS monitor can ask for.
+ *
+ * Deliberately not every type in the registry. These are the ones whose
+ * disappearance is an outage or a compromise; nobody pages at 3am over an HINFO.
+ */
+export const DNS_RECORD_TYPES = [
+  "A",
+  "AAAA",
+  "CNAME",
+  "MX",
+  "NS",
+  "TXT",
+  "SOA",
+  "CAA",
+  "SRV",
+  "PTR",
+] as const;
+export type DnsRecordType = (typeof DNS_RECORD_TYPES)[number];
 
 export const monitors = sqliteTable(
   "monitors",
@@ -164,6 +191,20 @@ export const monitors = sqliteTable(
     /* -- ssl options -- */
     /** Days before certificate expiry at which the monitor turns degraded. */
     sslWarnDays: integer("ssl_warn_days").notNull().default(21),
+
+    /* -- dns options -- */
+    dnsRecordType: text("dns_record_type", { enum: DNS_RECORD_TYPES }),
+    /** Expected answers, one per line. Empty asserts only that the name resolves. */
+    dnsExpected: text("dns_expected"),
+    dnsMatchMode: text("dns_match_mode", { enum: ["contains", "exact"] })
+      .notNull()
+      .default("contains"),
+    /**
+     * Resolver to query. Empty means the system's, which is usually what you
+     * want; setting it to your authoritative server turns a second monitor on the
+     * same name into a propagation check.
+     */
+    dnsResolver: text("dns_resolver"),
 
     /* -- objectives -- */
     sloTargetPct: real("slo_target_pct").notNull().default(99.9),

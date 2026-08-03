@@ -50,7 +50,7 @@ const rand = mulberry(20260729);
 interface Plan {
   name: string;
   description?: string;
-  kind: "http" | "tcp" | "ping" | "ssl" | "heartbeat";
+  kind: "http" | "tcp" | "ping" | "ssl" | "dns" | "heartbeat";
   target: string;
   intervalSec: number;
   baseLatency: number;
@@ -64,6 +64,22 @@ interface Plan {
   tags?: string[];
   expectedStatus?: string;
   keyword?: string;
+  dnsRecordType?: "A" | "AAAA" | "CNAME" | "MX" | "NS" | "TXT";
+  dnsExpected?: string;
+}
+
+/** What a failed check of this kind says, so history and incidents agree. */
+function downError(kind: Plan["kind"]): string {
+  switch (kind) {
+    case "heartbeat":
+      return "No ping received within the grace period";
+    case "tcp":
+      return "Connection refused";
+    case "dns":
+      return "Resolver returned SERVFAIL for example.com — the authoritative server failed or DNSSEC validation did not pass";
+    default:
+      return "Expected 2xx, got 503";
+  }
 }
 
 const PLANS: Plan[] = [
@@ -116,6 +132,22 @@ const PLANS: Plan[] = [
       [17, 41],
     ],
     sloTargetPct: 99.9,
+  },
+  {
+    name: "DNS — example.com",
+    tags: ["prod", "dns"],
+    description: "Apex A records, from the system resolver.",
+    kind: "dns",
+    target: "example.com",
+    intervalSec: 300,
+    baseLatency: 18,
+    jitter: 11,
+    failureRate: 0.0004,
+    // A zone that briefly stopped answering — the failure an HTTP monitor would
+    // have reported only as "host not found".
+    outages: [[9, 7]],
+    dnsRecordType: "A",
+    dnsExpected: "93.184.216.34",
   },
   {
     name: "Postgres primary",
@@ -247,6 +279,8 @@ async function main() {
         keyword: plan.keyword ?? null,
         sloTargetPct: plan.sloTargetPct ?? 99.9,
         tags: serialiseTags(plan.tags ?? []),
+        dnsRecordType: plan.dnsRecordType ?? null,
+        dnsExpected: plan.dnsExpected ?? null,
         heartbeatToken: plan.kind === "heartbeat" ? newHeartbeatToken() : null,
         createdAt: new Date(now - HISTORY_DAYS * DAY),
         createdBy: admin.id,
@@ -290,12 +324,7 @@ async function main() {
           status: "down",
           latencyMs: null,
           httpStatus: plan.kind === "http" ? 503 : null,
-          error:
-            plan.kind === "heartbeat"
-              ? "No ping received within the grace period"
-              : plan.kind === "tcp"
-                ? "Connection refused"
-                : "Expected 2xx, got 503",
+          error: downError(plan.kind),
         });
         continue;
       }
@@ -345,10 +374,7 @@ async function main() {
           status: "resolved",
           startedAt: new Date(start),
           resolvedAt: new Date(end),
-          cause:
-            plan.kind === "heartbeat"
-              ? "No ping received within the grace period"
-              : "Expected 2xx, got 503",
+          cause: downError(plan.kind),
           failedChecks: Math.max(1, Math.round((end - start) / stepMs)),
         })
         .returning({ id: incidents.id })

@@ -19,13 +19,19 @@ import {
   formatHeaderLines,
 } from "@/lib/monitors/schema";
 import { formatTags } from "@/lib/monitors/tags";
-import { MONITOR_KINDS, type Monitor, type MonitorKind } from "@/lib/db/schema";
+import {
+  DNS_RECORD_TYPES,
+  MONITOR_KINDS,
+  type Monitor,
+  type MonitorKind,
+} from "@/lib/db/schema";
 
 const KIND_LABEL: Record<MonitorKind, string> = {
   http: "HTTP / HTTPS",
   tcp: "TCP port",
   ping: "Ping (ICMP)",
   ssl: "TLS certificate",
+  dns: "DNS record",
   heartbeat: "Heartbeat (dead man's switch)",
 };
 
@@ -34,6 +40,7 @@ const KIND_HINT: Record<MonitorKind, string> = {
   tcp: "Open a TCP connection. The right check for anything that isn't HTTP — a database, a queue, an SMTP relay.",
   ping: "ICMP echo. Proves the host is reachable, but says nothing about whether the application works.",
   ssl: "Watch a certificate's expiry and trust chain, so renewal never becomes an outage.",
+  dns: "Resolve a name and assert on the answer. Catches a zone breaking, a record being dropped by a migration, or one changing under you.",
   heartbeat:
     "Watchman waits for your job to call in. Alerts when a cron, worker, or backup stops running — the failure no outside probe can see.",
 };
@@ -77,6 +84,9 @@ export function MonitorForm({
     String(monitor?.intervalSec ?? DEFAULT_INTERVAL.http),
   );
   const [keywordMode, setKeywordMode] = useState(monitor?.keywordMode ?? "contains");
+  const [dnsMatchMode, setDnsMatchMode] = useState(
+    monitor?.dnsMatchMode ?? "contains",
+  );
 
   const err = (field: string) => state.fieldErrors?.[field] ?? null;
   const isHttp = kind === "http";
@@ -299,6 +309,88 @@ export function MonitorForm({
               defaultChecked={monitor?.verifyTls ?? true}
             />
           </div>
+        </Panel>
+      ) : null}
+
+      {/* ---- DNS specifics ----------------------------------------------- */}
+      {kind === "dns" ? (
+        <Panel inset className="flex flex-col gap-5">
+          <SectionHeader label="record &amp; assertions" />
+          <Rule />
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Record type" htmlFor="dnsRecordType">
+              <Select
+                id="dnsRecordType"
+                name="dnsRecordType"
+                defaultValue={monitor?.dnsRecordType ?? "A"}
+              >
+                {DNS_RECORD_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              label="Resolver"
+              htmlFor="dnsResolver"
+              hint="Blank uses the system resolver. Point one monitor at your authoritative server and another at 1.1.1.1 to watch propagation."
+              error={err("dnsResolver")}
+            >
+              <Input
+                id="dnsResolver"
+                name="dnsResolver"
+                defaultValue={monitor?.dnsResolver ?? ""}
+                placeholder="1.1.1.1"
+                spellCheck={false}
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+            <Field
+              label="Expected answer"
+              htmlFor="dnsExpected"
+              hint={
+                dnsMatchMode === "exact"
+                  ? "The complete answer. Any record you did not list is a failure — which is how you catch one appearing that should not exist."
+                  : "One per line. Blank asserts only that the name resolves at all."
+              }
+              error={err("dnsExpected")}
+            >
+              <Textarea
+                id="dnsExpected"
+                name="dnsExpected"
+                rows={3}
+                defaultValue={monitor?.dnsExpected ?? ""}
+                placeholder={"93.184.216.34\n93.184.216.35"}
+                spellCheck={false}
+              />
+            </Field>
+
+            <Field label="Match" htmlFor="dnsMatchMode">
+              <Select
+                id="dnsMatchMode"
+                name="dnsMatchMode"
+                value={dnsMatchMode}
+                onChange={(e) =>
+                  setDnsMatchMode(e.target.value as typeof dnsMatchMode)
+                }
+              >
+                <option value="contains">must include</option>
+                <option value="exact">exactly</option>
+              </Select>
+            </Field>
+          </div>
+
+          <p className="text-[12px] leading-relaxed text-ash">
+            MX and SRV answers are compared in zone-file order —{" "}
+            <code className="font-mono text-bone">10 mail.example.com</code>. TXT
+            records are joined back together first, so a DKIM key split across
+            chunks matches the value you published.
+          </p>
         </Panel>
       ) : null}
 

@@ -32,7 +32,7 @@ import {
   deleteMonitorAction,
   togglePauseAction,
 } from "@/lib/monitors/actions";
-import { KIND_LABEL } from "@/lib/probe";
+import { KIND_LABEL, parseExpectedRecords } from "@/lib/probe";
 import { getMonitorDetail } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -314,6 +314,17 @@ export default async function MonitorPage({
                   {monitor.followRedirects ? "follow" : "do not follow"}
                 </KeyValue>
                 <KeyValue k="verify tls">{monitor.verifyTls ? "yes" : "no"}</KeyValue>
+              </>
+            ) : null}
+            {monitor.kind === "dns" ? (
+              <>
+                <KeyValue k="record">{monitor.dnsRecordType ?? "A"}</KeyValue>
+                <KeyValue k="resolver">{monitor.dnsResolver ?? "system"}</KeyValue>
+                <KeyValue k="expects">
+                  {monitor.dnsExpected
+                    ? `${monitor.dnsMatchMode === "exact" ? "exactly" : "at least"} ${parseExpectedRecords(monitor.dnsExpected).join(", ")}`
+                    : "any answer"}
+                </KeyValue>
               </>
             ) : null}
             <KeyValue k="interval">{formatDuration(monitor.intervalSec * 1000)}</KeyValue>

@@ -1,4 +1,5 @@
-import type { MonitorKind } from "@/lib/db/schema";
+import type { DnsRecordType, MonitorKind } from "@/lib/db/schema";
+import type { DnsMatchMode } from "./dns";
 
 export type CheckStatus = "up" | "degraded" | "down";
 
@@ -47,6 +48,14 @@ export interface ProbeSpec {
   timeoutMs?: number;
   degradedMs?: number | null;
   sslWarnDays?: number;
+
+  /* -- dns options -- */
+  dnsRecordType?: DnsRecordType | null;
+  /** Expected answers, one per line or comma-separated. Empty asserts only that it resolves. */
+  dnsExpected?: string | null;
+  dnsMatchMode?: DnsMatchMode;
+  /** A specific resolver to query, e.g. 1.1.1.1. Empty uses the system's. */
+  dnsResolver?: string | null;
 }
 
 export const MAX_REDIRECTS = 5;
