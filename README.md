@@ -17,7 +17,7 @@ docker run -d -p 3000:3000 -v watchman:/data \
 
 ## What it does
 
-Watchman watches things and tells you when they break. Five kinds of check:
+Watchman watches things and tells you when they break. Six kinds of check:
 
 | Kind | What it proves | Good for |
 | --- | --- | --- |
@@ -25,6 +25,7 @@ Watchman watches things and tells you when they break. Five kinds of check:
 | **TCP** | Something is listening and accepting connections | Postgres, Redis, SMTP, game servers |
 | **Ping** | The host is reachable at all | Routers, VMs, bare metal |
 | **TLS** | The certificate is valid and not about to expire | Every domain you own |
+| **DNS** | A name still resolves, to the answer you expect | Zones, MX records, propagation |
 | **Heartbeat** | A job that should have run, ran | Cron, backups, queue workers, ETL |
 
 That last one is the inverse of the others, and the reason a lot of people end up
@@ -39,6 +40,9 @@ Watchman instead, and Watchman alerts when the call stops coming.
 - **Alerts you will not learn to ignore.** Confirmation delays before opening an
   incident, flap dampening for unstable endpoints, maintenance windows, and per-channel
   opt-outs for recoveries and slowdowns.
+- **Alerts that do not stop at the first channel.** Email, Slack, Discord, Telegram, and
+  signed webhooks — plus escalation policies, so an alert nobody acknowledges reaches
+  somebody else instead of going quiet.
 - **A grade, not just a percentage.** 99.5% and 99.9% look identical and differ by two
   hours a month. Every monitor is scored S–F over uptime, p95 latency, and how *often*
   it breaks — then handed to you as an embeddable badge.
@@ -85,7 +89,7 @@ involved. To run a published image instead, uncomment the `image:` line in
 
 ```bash
 pnpm install
-pnpm seed                 # optional: 30 days of demo data across all five kinds
+pnpm seed                 # optional: 30 days of demo data across the check kinds
 pnpm dev
 ```
 
@@ -246,6 +250,33 @@ To report failures explicitly:
 you mark that job alive or failed and nothing else. Rotate it from the monitor page if
 it leaks.
 
+## DNS checks
+
+Pick a record type and a name. Leave the expected answer blank and the check asserts only
+that the name resolves — already the difference between a working domain and a dead one.
+Fill it in and the answer is compared against it:
+
+| Match | Fails when |
+| --- | --- |
+| **must include** (default) | A record you listed is missing. Catches a migration dropping an A record, or an MX that stops being published. |
+| **exactly** | Anything is missing *or* anything extra is present. For a zone where an answer you did not publish means somebody else did. |
+
+Comparison ignores case and the root's trailing dot, because DNS does. MX and SRV records
+are compared in the order a zone file writes them — `10 mail.example.com` — and TXT
+records are reassembled first, so a DKIM key the resolver split at 255 bytes matches the
+single value you published.
+
+Leave the resolver blank to use the system's. Setting it to a literal — `1.1.1.1`, or your
+own authoritative server — turns a second monitor on the same name into a propagation
+check: one asks where the record is published, the other asks whether the world can see
+it yet. Only IP addresses are accepted, since a resolver named by hostname would itself
+need resolving.
+
+The error tells you which failure it was. `NXDOMAIN` means the name does not exist;
+"No A record for example.com" means it does, but has nothing of that type; `SERVFAIL`
+means the authoritative server broke or DNSSEC validation did not pass. Those want
+different fixes, and a generic "lookup failed" would hide the difference.
+
 ## Maintenance windows
 
 Schedule one before a deploy and Watchman stays quiet for the duration instead of
@@ -292,7 +323,7 @@ if (!valid || Math.abs(Date.now() / 1000 - Number(ts)) > 300) {
 
 | Header | Value |
 | --- | --- |
-| `x-watchman-event` | `monitor.down` · `monitor.up` · `monitor.degraded` · `test` |
+| `x-watchman-event` | `monitor.down` · `monitor.up` · `monitor.degraded` · `monitor.escalated` · `test` |
 | `x-watchman-timestamp` | Unix seconds |
 | `x-watchman-signature` | `sha256=<hex>` |
 | `x-watchman-delivery` | Idempotency key, for discarding retries you already handled |
@@ -305,9 +336,59 @@ health — so an alert is actionable without a round trip back to the dashboard.
 Talk to [@BotFather](https://t.me/botfather), run `/newbot`, and paste the token and
 your chat id. Add the bot to the chat first or it cannot post.
 
+### Slack and Discord
+
+Paste an incoming-webhook URL. Both render as native messages — a Slack block layout and
+a Discord embed with the status in the stripe — rather than as the raw JSON a generic
+webhook would deliver. Watchman checks the host at setup, because a Slack URL pasted into
+a Discord channel otherwise fails for the first time during a real outage.
+
+### Email
+
+SMTP host, port, and a from address. Username and password are optional, since plenty of
+self-hosted setups relay through an unauthenticated MTA on the same box. Port 465 wants
+"implicit TLS" on; 587 wants it off and negotiates STARTTLS.
+
+Both a plain-text and an HTML part are sent, so the alert survives a client that strips
+HTML, and the plain part keeps the link as a URL rather than as unclickable text.
+
+### Retries
+
 Only 5xx, 429, and network errors are retried; a 400 means the payload or URL is wrong,
-and retrying it just triples the log. Every attempt is recorded, so "was anyone actually
-paged?" is answerable after the fact.
+and retrying it just triples the log. SMTP is the exception and classifies its own
+failures, because there the convention is inverted — a 4xx reply is the transient one
+(greylisting, mailbox busy) and 5xx is permanent. Every attempt is recorded, so "was
+anyone actually paged?" is answerable after the fact.
+
+## Escalation
+
+An alert that fires into a channel nobody is watching fails silently, and the outage runs
+until someone notices another way. An escalation policy is an ordered list of "after this
+long, tell this channel":
+
+| After | Notify |
+| --- | --- |
+| immediately | Telegram — on-call |
+| 5 minutes | Email — the team |
+| 15 minutes | Webhook → phone tree |
+
+Attach the policy to a monitor and any incident there follows it. **Acknowledging the
+incident stops the escalation** — that is what the ack button is for, and it is the only
+thing that stops it short of a recovery.
+
+Delays are measured from when the incident opened, not from the previous step, so editing
+one step never silently shifts the rest. A policy can also repeat its last step until
+somebody acknowledges; that is off unless you ask for it, and capped at ten repeats,
+because an eleventh copy of a page nobody has answered is not the missing ingredient.
+
+Three things never escalate: incidents that were acknowledged, incidents suppressed by a
+maintenance window (including one that opens *after* the incident did), and incidents on a
+monitor that is flapping. Each of those is a case where the additional alert carries no
+information the first one did not.
+
+The sweep runs every 15 seconds, so a step set to fire at 60s fires somewhere in 60–75s.
+It is idempotent — a restart mid-escalation re-pages nobody — and when several steps come
+due at once, they are collapsed and sent once each rather than once per step skipped.
 
 ## Badges
 
@@ -351,9 +432,11 @@ if you disagree.
 ```
 instrumentation.ts          boots the scheduler once per server process
   └─ lib/scheduler          tick loop over a next_run_at column
-       ├─ lib/probe         http · tcp · ping · ssl · heartbeat  (pure, testable)
+       ├─ lib/probe         http · tcp · ping · ssl · dns · heartbeat  (pure, testable)
        ├─ lib/incidents     state machine → transaction → notify
-       │    └─ lib/notify   webhook · telegram, with retries and a delivery log
+       │    ├─ sweep.ts     escalates incidents nobody acknowledged
+       │    └─ lib/notify   email · slack · discord · telegram · webhook,
+       │                    with retries and a delivery log
        ├─ rollup.ts         hourly + daily aggregates
        └─ retention.ts      prunes raw checks, keeps the rollups
 lib/events/bus.ts           in-process pub/sub → SSE → the live tape
@@ -382,6 +465,9 @@ Some decisions and their reasons:
 - **`/api/health` returns 503 when the probe loop stalls**, not only when the web server
   dies. A monitoring tool serving green pages with a dead scheduler is worse than one
   that is plainly down.
+- **Escalation stores a count, not a timestamp.** The sweep compares what has already
+  fired against what is due and sends the difference, so running it twice — or restarting
+  halfway through a policy — cannot page everyone a second time.
 
 ## Security notes
 

@@ -7,7 +7,7 @@ are load-bearing.
 
 ```bash
 pnpm install
-pnpm seed     # 30 days of synthetic history across all five monitor kinds
+pnpm seed     # 30 days of synthetic history across the monitor kinds
 pnpm dev
 ```
 
@@ -67,6 +67,12 @@ customer nothing and describes your topology. Status pages say "we are investiga
 reason. The confirmation delays, flap dampening, degraded-transition-only rule, and
 maintenance windows all exist because a channel people mute is worse than no channel.
 
+Escalation is the one feature that deliberately sends more, so it is fenced accordingly:
+acknowledging stops it, suppressed and flapping incidents never enter it, repeats are off
+by default and capped, and a backlog of due steps collapses into one notification per
+channel instead of one per step. Anything added there should come with a matching answer
+to "how does this stop?"
+
 ## Adding a monitor kind
 
 1. Write the probe in `src/lib/probe/<kind>.ts`, returning a `ProbeResult`. Keep it
@@ -88,10 +94,20 @@ maintenance windows all exist because a channel people mute is worse than no cha
    the notifier mid-outage.
 2. Write `deliver<Channel>` returning a `DeliveryResult`. Surface the provider's own
    error text — "chat not found" beats a status code.
-3. Add the kind to `CHANNEL_KINDS`, run `pnpm db:generate`, and wire the branch in
-   `deliverWithRetry`.
-4. Add form fields in `channel-forms.tsx`, and mask any credential everywhere it
-   surfaces.
+3. Add the kind to `CHANNEL_KINDS` and wire the case in `deliver()` in
+   `lib/notify/index.ts`. The `never` fallthrough there means forgetting this is a
+   compile error rather than a channel that silently sends nothing during an outage.
+   Widening the enum needs no migration — SQLite stores it as plain TEXT.
+4. Add a case to `KindFields` in `channel-forms.tsx`, a case to `describeConfig` on the
+   channels page, and mask any credential everywhere it surfaces.
+
+If the protocol classifies its own failures differently from HTTP, set `retryable` on the
+`DeliveryResult` rather than leaving the generic loop to guess — see `describeSmtpError`,
+where 4xx is the transient class and 5xx is permanent, the opposite of the HTTP reading.
+
+Renderers live in `lib/notify/render.ts`. Take the fields from `alertFields()` rather than
+picking them out of the payload yourself: changing what an alert says should not mean
+editing five renderers and forgetting one.
 
 ## Cutting a release
 
