@@ -25,6 +25,10 @@ export default tseslint.config(
       "data/**",
       "backups/**",
       "next-env.d.ts",
+      // Agent worktrees are whole checkouts of this repo. Without this, every
+      // problem in the tree gets reported once per worktree, and a stale one
+      // reports problems from code that is no longer on any branch.
+      ".claude/worktrees/**",
     ],
   },
 
