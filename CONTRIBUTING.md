@@ -52,7 +52,7 @@ probe for the duration. Queue the side effect and run it after the commit — se
 **The UI is built on [Minima](https://github.com/phugadev/minima).** Colour, type,
 space, radius, depth, focus and both light and dark modes come from its theme, installed
 from the registry into `styles/minima.css` with its components in `src/components/ui/`
-(`button`, `input`, `tabs`, `stat`, `status`, `layout`). Do not edit those files; re-add
+(`button`, `input`, `tabs`, `stat`, `status`). Do not edit those files; re-add
 them with `npx shadcn@latest add phugadev/minima/<item> --overwrite`. What is Watchman's
 own — the instrument textures, the tape's shape cues, the crop-mark frames, the
 animations — lives in `src/app/globals.css`. Ask for a role (`text-muted-foreground`,
