@@ -32,16 +32,16 @@ export async function generateMetadata({
 type EventKind = (typeof INCIDENT_EVENT_KINDS)[number];
 
 const EVENT_TONE: Record<EventKind, string> = {
-  opened: "bg-alarm",
-  acknowledged: "bg-amp",
-  comment: "bg-info",
-  escalated: "bg-alarm",
-  flapping: "bg-amp",
-  recovered: "bg-live",
-  resolved: "bg-live",
-  suppressed: "bg-violet",
-  notified: "bg-info",
-  notify_failed: "bg-alarm",
+  opened: "bg-red-mark",
+  acknowledged: "bg-primary",
+  comment: "bg-blue-mark",
+  escalated: "bg-red-mark",
+  flapping: "bg-primary",
+  recovered: "bg-green-mark",
+  resolved: "bg-green-mark",
+  suppressed: "bg-purple-mark",
+  notified: "bg-blue-mark",
+  notify_failed: "bg-red-mark",
 };
 
 const EVENT_LABEL: Record<EventKind, string> = {
@@ -77,18 +77,18 @@ export default async function IncidentPage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-slate">
-          <Link href="/incidents" className="hover:text-ash">
+        <div className="flex items-center gap-2 signal type-label-xs text-subtle-foreground">
+          <Link href="/incidents" className="hover:text-muted-foreground">
             incidents
           </Link>
           <span aria-hidden>/</span>
-          <Link href={`/monitors/${monitor.id}`} className="hover:text-ash">
+          <Link href={`/monitors/${monitor.id}`} className="hover:text-muted-foreground">
             {monitor.name}
           </Link>
         </div>
 
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-bone">
+          <h1 className="type-title font-semibold text-foreground">
             {incident.cause ?? "Check failed"}
           </h1>
 
@@ -96,7 +96,7 @@ export default async function IncidentPage({
             {isOpen && !incident.acknowledgedAt ? (
               <form action={acknowledgeAction}>
                 <input type="hidden" name="id" value={incident.id} />
-                <Button type="submit" variant="solid" size="sm">
+                <Button type="submit" size="sm">
                   acknowledge
                 </Button>
               </form>
@@ -104,7 +104,7 @@ export default async function IncidentPage({
             {isOpen ? (
               <form action={resolveAction}>
                 <input type="hidden" name="id" value={incident.id} />
-                <Button type="submit" variant="ghost" size="sm">
+                <Button type="submit" variant="outline" size="sm">
                   resolve manually
                 </Button>
               </form>
@@ -152,7 +152,7 @@ export default async function IncidentPage({
         ) : null}
       </CropFrame>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* ---- timeline -------------------------------------------------- */}
         <section className="flex flex-col gap-3">
           <SectionHeader label="timeline" />
@@ -164,7 +164,7 @@ export default async function IncidentPage({
                   {i < timeline.length - 1 ? (
                     <span
                       aria-hidden
-                      className="absolute left-[3px] top-3 h-full w-px bg-hairline-soft"
+                      className="absolute left-[3px] top-3 h-full w-px bg-border"
                     />
                   ) : null}
                   <span
@@ -174,7 +174,7 @@ export default async function IncidentPage({
                   <div className="flex min-w-0 flex-col gap-1">
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <MonoLabel tone="bone">{EVENT_LABEL[event.kind]}</MonoLabel>
-                      <span className="tnum font-mono text-[10px] text-slate">
+                      <span className="tabular-nums font-mono type-caption-sm text-subtle-foreground">
                         {event.at.toLocaleString(undefined, {
                           month: "short",
                           day: "numeric",
@@ -184,13 +184,13 @@ export default async function IncidentPage({
                         })}
                       </span>
                       {actorName ? (
-                        <span className="font-mono text-[10px] text-slate">
+                        <span className="font-mono type-caption-sm text-subtle-foreground">
                           {actorName}
                         </span>
                       ) : null}
                     </div>
                     {event.message ? (
-                      <p className="break-words text-[13px] leading-relaxed text-ash">
+                      <p className="break-words type-caption text-muted-foreground">
                         {event.message}
                       </p>
                     ) : null}
@@ -209,7 +209,7 @@ export default async function IncidentPage({
                 maxLength={2000}
                 className="flex-1"
               />
-              <Button type="submit" variant="ghost" size="sm">
+              <Button type="submit" variant="outline" size="sm">
                 add
               </Button>
             </form>
@@ -223,7 +223,7 @@ export default async function IncidentPage({
             <Rule />
             <div className="flex flex-col">
               <KeyValue k="name">
-                <Link href={`/monitors/${monitor.id}`} className="hover:text-amp">
+                <Link href={`/monitors/${monitor.id}`} className="hover:text-foreground">
                   {monitor.name}
                 </Link>
               </KeyValue>
@@ -253,29 +253,29 @@ export default async function IncidentPage({
             <SectionHeader label="alert deliveries" />
             <Rule />
             {deliveries.length === 0 ? (
-              <p className="text-[12px] text-slate">
+              <p className="type-caption-sm text-subtle-foreground">
                 {incident.suppressed
                   ? "Suppressed by a maintenance window."
                   : "No alerts were sent for this incident."}
               </p>
             ) : (
-              <ol className="flex flex-col gap-2 font-mono text-[11px]">
+              <ol className="flex flex-col gap-2 font-mono type-caption-sm">
                 {deliveries.map(({ notification, channelName }) => (
                   <li key={notification.id} className="flex items-baseline gap-2">
                     <span
                       className={
                         notification.ok
-                          ? "size-1.5 shrink-0 bg-live"
-                          : "size-1.5 shrink-0 bg-alarm"
+                          ? "size-1.5 shrink-0 bg-green-mark"
+                          : "size-1.5 shrink-0 bg-red-mark"
                       }
                       aria-hidden
                     />
-                    <span className="shrink-0 text-ash">{channelName}</span>
-                    <span className="text-slate">{notification.kind}</span>
+                    <span className="shrink-0 text-muted-foreground">{channelName}</span>
+                    <span className="text-subtle-foreground">{notification.kind}</span>
                     {notification.attempts > 1 ? (
-                      <span className="text-warn">×{notification.attempts}</span>
+                      <span className="text-amber-text">×{notification.attempts}</span>
                     ) : null}
-                    <span className="ml-auto shrink-0 tnum text-slate">
+                    <span className="ml-auto shrink-0 tabular-nums text-subtle-foreground">
                       {formatMs(notification.durationMs)}
                     </span>
                   </li>
@@ -283,7 +283,7 @@ export default async function IncidentPage({
               </ol>
             )}
             {deliveries.some((d) => !d.notification.ok) ? (
-              <p className="border-l-2 border-alarm/40 pl-2 font-mono text-[10px] text-alarm">
+              <p className="border-l-2 border-red-border pl-2 font-mono type-caption-sm text-red-text">
                 {deliveries.find((d) => !d.notification.ok)!.notification.error}
               </p>
             ) : null}
@@ -295,34 +295,34 @@ export default async function IncidentPage({
       <section className="flex flex-col gap-3">
         <SectionHeader label="checks around this incident" />
         <Panel inset>
-          <ol className="flex max-h-72 flex-col overflow-y-auto font-mono text-[11px]">
+          <ol className="flex max-h-72 flex-col overflow-y-auto font-mono type-caption-sm">
             {checks.map((c) => (
               <li
                 key={c.id}
-                className="flex items-baseline gap-3 border-b border-hairline-soft/50 py-1.5 last:border-0"
+                className="flex items-baseline gap-3 border-b border-border/50 py-1.5 last:border-0"
               >
-                <span className="shrink-0 tnum text-slate">
+                <span className="shrink-0 tabular-nums text-subtle-foreground">
                   {c.at.toLocaleTimeString(undefined, { hour12: false })}
                 </span>
                 <span
                   className={
                     c.status === "down"
-                      ? "w-3 shrink-0 text-alarm"
+                      ? "w-3 shrink-0 text-red-text"
                       : c.status === "degraded"
-                        ? "w-3 shrink-0 text-warn"
-                        : "w-3 shrink-0 text-live"
+                        ? "w-3 shrink-0 text-amber-text"
+                        : "w-3 shrink-0 text-green-text"
                   }
                   aria-hidden
                 >
                   {c.status === "down" ? "✕" : c.status === "degraded" ? "~" : "✓"}
                 </span>
-                <span className="w-16 shrink-0 tnum text-ash">
+                <span className="w-16 shrink-0 tabular-nums text-muted-foreground">
                   {formatMs(c.latencyMs)}
                 </span>
                 {c.httpStatus ? (
-                  <span className="w-8 shrink-0 tnum text-slate">{c.httpStatus}</span>
+                  <span className="w-8 shrink-0 tabular-nums text-subtle-foreground">{c.httpStatus}</span>
                 ) : null}
-                <span className="min-w-0 flex-1 truncate text-slate">
+                <span className="min-w-0 flex-1 truncate text-subtle-foreground">
                   {c.error ?? ""}
                 </span>
               </li>

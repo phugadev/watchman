@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
 import { EmptyState, Panel, SectionHeader } from "@/components/ui/frame";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { MonoLabel } from "@/components/ui/mono";
-import { StatusDot } from "@/components/ui/status";
+import { StatusDot } from "@/components/monitor-status";
 import { Tag, TagList } from "@/components/ui/tag";
 import { collectTags, parseTags, readTags } from "@/lib/monitors/tags";
 import { KIND_LABEL } from "@/lib/probe";
@@ -41,7 +41,7 @@ export default async function MonitorsPage({
           title="no monitors"
           hint="Watchman can watch HTTP endpoints, TCP ports, TLS certificates, ICMP reachability, and cron jobs that phone home."
           action={
-            <ButtonLink href="/monitors/new" variant="solid">
+            <ButtonLink href="/monitors/new">
               Create a monitor
             </ButtonLink>
           }
@@ -59,7 +59,7 @@ export default async function MonitorsPage({
             : `monitors · ${all.length}`
         }
       >
-        <ButtonLink href="/monitors/new" variant="solid" size="sm">
+        <ButtonLink href="/monitors/new" size="sm">
           new monitor
         </ButtonLink>
       </SectionHeader>
@@ -90,7 +90,7 @@ export default async function MonitorsPage({
           title={`no monitors tagged "${activeTag}"`}
           hint="The tag may have been renamed or removed since this link was shared."
           action={
-            <ButtonLink href="/monitors" variant="ghost" size="sm">
+            <ButtonLink href="/monitors" variant="outline" size="sm">
               Show all monitors
             </ButtonLink>
           }
@@ -101,12 +101,12 @@ export default async function MonitorsPage({
       <Panel className="overflow-x-auto">
         <table className="w-full min-w-[52rem] border-collapse text-left">
           <thead>
-            <tr className="border-b border-hairline-soft">
+            <tr className="border-b border-border">
               {["", "monitor", "type", "24h", "p95", "incidents 30d", "last check", "grade"].map(
                 (h, i) => (
                   <th
                     key={i}
-                    className="px-3 py-2.5 font-mono text-[9px] font-normal uppercase tracking-[0.16em] text-slate"
+                    className="px-3 py-2.5 signal type-label-xs font-normal text-subtle-foreground"
                   >
                     {h}
                   </th>
@@ -118,17 +118,17 @@ export default async function MonitorsPage({
             {health.map(({ monitor, status, summary24h, grade, incidents30d }) => (
               <tr
                 key={monitor.id}
-                className="border-b border-hairline-soft/60 transition-colors last:border-0 hover:bg-panel-2"
+                className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted"
               >
                 <td className="w-6 px-3 py-3">
                   <StatusDot status={status} beacon />
                 </td>
                 <td className="max-w-[18rem] px-3 py-3">
                   <Link href={`/monitors/${monitor.id}`} className="group block">
-                    <div className="truncate text-[13px] text-bone group-hover:text-amp">
+                    <div className="truncate type-caption text-foreground group-hover:text-foreground">
                       {monitor.name}
                     </div>
-                    <div className="truncate font-mono text-[10px] text-slate">
+                    <div className="truncate font-mono type-caption-sm text-subtle-foreground">
                       {monitor.kind === "heartbeat"
                         ? `expects a ping every ${monitor.intervalSec}s`
                         : monitor.target.replace(/^https?:\/\//, "")}
@@ -144,18 +144,18 @@ export default async function MonitorsPage({
                 <td className="px-3 py-3">
                   <MonoLabel tone="ash">{KIND_LABEL[monitor.kind]}</MonoLabel>
                 </td>
-                <td className="px-3 py-3 tnum font-mono text-[12px] text-bone">
+                <td className="px-3 py-3 tabular-nums font-mono type-caption-sm text-foreground">
                   {summary24h.total === 0 ? "—" : formatUptime(summary24h.uptimePct)}
                 </td>
-                <td className="px-3 py-3 tnum font-mono text-[12px] text-ash">
+                <td className="px-3 py-3 tabular-nums font-mono type-caption-sm text-muted-foreground">
                   {formatMs(summary24h.p95Ms)}
                 </td>
-                <td className="px-3 py-3 tnum font-mono text-[12px]">
-                  <span className={incidents30d > 0 ? "text-warn" : "text-slate"}>
+                <td className="px-3 py-3 tabular-nums font-mono type-caption-sm">
+                  <span className={incidents30d > 0 ? "text-amber-text" : "text-subtle-foreground"}>
                     {incidents30d}
                   </span>
                 </td>
-                <td className="px-3 py-3 tnum font-mono text-[11px] text-slate">
+                <td className="px-3 py-3 tabular-nums font-mono type-caption-sm text-subtle-foreground">
                   {monitor.paused ? "paused" : formatAgo(monitor.lastCheckedAt)}
                 </td>
                 <td className="px-3 py-3">

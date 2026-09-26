@@ -38,13 +38,13 @@ export function NavLinks({
             className={cn(
               // whitespace-nowrap is load-bearing: without it the count chip wraps
               // below its label and pushes the fixed-height header out of shape.
-              "relative shrink-0 whitespace-nowrap px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors duration-150",
-              active ? "text-bone" : "text-slate hover:text-ash",
+              "relative shrink-0 whitespace-nowrap px-3 py-2 signal type-label-sm transition-colors duration-150",
+              active ? "text-foreground" : "text-subtle-foreground hover:text-muted-foreground",
             )}
           >
             {item.label}
             {item.badge ? (
-              <span className="ml-1.5 inline-flex min-w-4 justify-center bg-alarm px-1 py-px tnum text-[9px] font-semibold text-bone">
+              <span className="ml-1.5 inline-flex min-w-4 justify-center bg-red-mark px-1 py-px tabular-nums type-caption-sm font-semibold text-foreground">
                 {item.badge}
               </span>
             ) : null}
@@ -53,7 +53,7 @@ export function NavLinks({
             {active ? (
               <span
                 aria-hidden
-                className="absolute inset-x-2 -bottom-px h-px bg-amp"
+                className="absolute inset-x-2 -bottom-px h-px bg-primary"
               />
             ) : null}
           </Link>

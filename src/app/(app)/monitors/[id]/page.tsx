@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LinkTabs } from "@/components/link-tabs";
 import { notFound } from "next/navigation";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
 import {
   CropFrame,
   Panel,
@@ -10,7 +12,7 @@ import {
 } from "@/components/ui/frame";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { Code, KeyValue, MonoLabel, Readout } from "@/components/ui/mono";
-import { StatusPill, UptimeTape, UptimeTapeLegend } from "@/components/ui/status";
+import { StatusPill, UptimeTape, UptimeTapeLegend } from "@/components/monitor-status";
 import { TagList } from "@/components/ui/tag";
 import { readTags } from "@/lib/monitors/tags";
 import { LatencyChart } from "@/components/charts/latency-chart";
@@ -111,17 +113,17 @@ export default async function MonitorPage({
     <div className="flex flex-col gap-8">
       {/* ---- header ------------------------------------------------------ */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-slate">
-          <Link href="/monitors" className="hover:text-ash">
+        <div className="flex items-center gap-2 signal type-label-xs text-subtle-foreground">
+          <Link href="/monitors" className="hover:text-muted-foreground">
             monitors
           </Link>
           <span aria-hidden>/</span>
-          <span className="text-ash">{KIND_LABEL[monitor.kind]}</span>
+          <span className="text-muted-foreground">{KIND_LABEL[monitor.kind]}</span>
         </div>
 
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-bone sm:text-3xl">
+            <h1 className="type-title font-semibold text-foreground sm:type-title">
               {monitor.name}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -131,7 +133,7 @@ export default async function MonitorPage({
                   href={monitor.kind === "http" ? monitor.target : undefined}
                   target={monitor.kind === "http" ? "_blank" : undefined}
                   rel="noreferrer noopener"
-                  className="font-mono text-[12px] text-ash hover:text-amp"
+                  className="font-mono type-caption-sm text-muted-foreground hover:text-foreground"
                 >
                   {monitor.target}
                 </a>
@@ -145,7 +147,7 @@ export default async function MonitorPage({
               hrefFor={(t) => `/monitors?tag=${encodeURIComponent(t)}`}
             />
             {monitor.description ? (
-              <p className="max-w-xl text-[13px] leading-relaxed text-ash">
+              <p className="max-w-xl type-caption text-muted-foreground">
                 {monitor.description}
               </p>
             ) : null}
@@ -154,17 +156,17 @@ export default async function MonitorPage({
           <div className="flex flex-wrap items-center gap-3">
             <form action={checkNowAction}>
               <input type="hidden" name="id" value={monitor.id} />
-              <Button type="submit" variant="ghost" size="sm">
+              <Button type="submit" variant="outline" size="sm">
                 check now
               </Button>
             </form>
             <form action={togglePauseAction}>
               <input type="hidden" name="id" value={monitor.id} />
-              <Button type="submit" variant="ghost" size="sm">
+              <Button type="submit" variant="outline" size="sm">
                 {monitor.paused ? "resume" : "pause"}
               </Button>
             </form>
-            <ButtonLink href={`/monitors/${monitor.id}/edit`} variant="ghost" size="sm">
+            <ButtonLink href={`/monitors/${monitor.id}/edit`} variant="outline" size="sm">
               edit
             </ButtonLink>
           </div>
@@ -175,22 +177,22 @@ export default async function MonitorPage({
       {openIncident ? (
         <Link
           href={`/incidents/${openIncident.id}`}
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-alarm/40 bg-alarm/10 px-4 py-3 transition-colors hover:bg-alarm/15"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-red-border bg-red-fill px-4 py-3 transition-colors hover:bg-red-fill-hover"
         >
           <MonoLabel tone="alarm">
             {openIncident.status === "acknowledged" ? "acknowledged" : "open incident"}
           </MonoLabel>
-          <span className="min-w-0 flex-1 truncate text-[13px] text-bone">
+          <span className="min-w-0 flex-1 truncate type-caption text-foreground">
             {openIncident.cause ?? "Check failed"}
           </span>
-          <span className="tnum font-mono text-[12px] text-alarm">
+          <span className="tabular-nums font-mono type-caption-sm text-red-text">
             {formatDuration(Date.now() - openIncident.startedAt.getTime())}
           </span>
         </Link>
       ) : null}
 
       {/* ---- grade + budget --------------------------------------------- */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <CropFrame hatch className="flex flex-col justify-between gap-6 p-6">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="flex flex-wrap items-end gap-8">
@@ -239,24 +241,11 @@ export default async function MonitorPage({
       </div>
 
       {/* ---- latency chart ---------------------------------------------- */}
-      <section className="flex flex-col gap-3">
-        <SectionHeader label="response time">
-          <div className="flex items-center gap-1">
-            {WINDOW_KEYS.map((k) => (
-              <Link
-                key={k}
-                href={`/monitors/${monitor.id}?w=${k}`}
-                className={
-                  k === windowKey
-                    ? "border-b border-amp px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-bone"
-                    : "border-b border-transparent px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-slate hover:text-ash"
-                }
-              >
-                {k}
-              </Link>
-            ))}
-          </div>
-        </SectionHeader>
+      <LinkTabs
+        label="response time"
+        value={windowKey}
+        items={WINDOW_KEYS.map((k) => ({ value: k, label: k, href: `/monitors/${monitor.id}?w=${k}` }))}
+      >
 
         <Panel className="grid-paper p-4">
           <LatencyChart
@@ -265,12 +254,12 @@ export default async function MonitorPage({
             height={220}
           />
           {WINDOWS[windowKey] > WINDOWS["24h"] ? (
-            <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.16em] text-slate">
+            <p className="mt-2 signal type-label-xs text-subtle-foreground">
               aggregated hourly · line is p95, band is min–max
             </p>
           ) : null}
         </Panel>
-      </section>
+      </LinkTabs>
 
       {/* ---- 90 day tape ------------------------------------------------- */}
       <section className="flex flex-col gap-3">
@@ -287,7 +276,7 @@ export default async function MonitorPage({
               detail: tapeDetail(d),
             }))}
           />
-          <div className="flex justify-between font-mono text-[9px] uppercase tracking-[0.16em] text-slate">
+          <div className="flex justify-between signal type-label-xs text-subtle-foreground">
             <span>90 days ago</span>
             <span>today</span>
           </div>
@@ -296,7 +285,7 @@ export default async function MonitorPage({
       </section>
 
       {/* ---- config + heartbeat ------------------------------------------ */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel inset className="flex flex-col gap-4">
           <SectionHeader label="configuration" />
           <Rule />
@@ -346,7 +335,7 @@ export default async function MonitorPage({
           <div className="flex flex-col gap-2">
             <MonoLabel>alert channels</MonoLabel>
             {channels.length === 0 ? (
-              <p className="text-[12px] text-warn">
+              <p className="type-caption-sm text-amber-text">
                 None attached — outages here will alert nobody.{" "}
                 <Link href={`/monitors/${monitor.id}/edit`} className="underline">
                   Attach one
@@ -358,7 +347,7 @@ export default async function MonitorPage({
                 {channels.map((c) => (
                   <Code key={c.id}>
                     {c.name}
-                    <span className="text-slate"> · {c.kind}</span>
+                    <span className="text-muted-foreground"> · {c.kind}</span>
                   </Code>
                 ))}
               </div>
@@ -373,7 +362,7 @@ export default async function MonitorPage({
             {escalationPolicy ? (
               <div className="flex flex-wrap items-center gap-2">
                 <Code>{escalationPolicy.name}</Code>
-                <span className="text-[12px] text-ash">
+                <span className="type-caption-sm text-muted-foreground">
                   {escalationPolicy.stepCount} step
                   {escalationPolicy.stepCount === 1 ? "" : "s"}
                   {escalationPolicy.repeatSec
@@ -382,7 +371,7 @@ export default async function MonitorPage({
                 </span>
               </div>
             ) : (
-              <p className="text-[12px] text-slate">
+              <p className="type-caption-sm text-subtle-foreground">
                 None — one alert, then silence until it recovers.
               </p>
             )}
@@ -418,40 +407,40 @@ export default async function MonitorPage({
           <Panel inset className="flex flex-col gap-4">
             <SectionHeader label="recent checks" />
             <Rule />
-            <ol className="flex max-h-[26rem] flex-col overflow-y-auto font-mono text-[11px]">
+            <ol className="flex max-h-[26rem] flex-col overflow-y-auto font-mono type-caption-sm">
               {recentChecks.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-baseline gap-3 border-b border-hairline-soft/50 py-1.5 last:border-0"
+                  className="flex items-baseline gap-3 border-b border-border/50 py-1.5 last:border-0"
                 >
-                  <span className="shrink-0 tnum text-slate">
+                  <span className="shrink-0 tabular-nums text-subtle-foreground">
                     {c.at.toLocaleTimeString(undefined, { hour12: false })}
                   </span>
                   <span
                     className={
                       c.status === "down"
-                        ? "w-3 shrink-0 text-alarm"
+                        ? "w-3 shrink-0 text-red-text"
                         : c.status === "degraded"
-                          ? "w-3 shrink-0 text-warn"
-                          : "w-3 shrink-0 text-live"
+                          ? "w-3 shrink-0 text-amber-text"
+                          : "w-3 shrink-0 text-green-text"
                     }
                     aria-hidden
                   >
                     {c.status === "down" ? "✕" : c.status === "degraded" ? "~" : "✓"}
                   </span>
-                  <span className="shrink-0 tnum w-16 text-ash">
+                  <span className="shrink-0 tabular-nums w-16 text-muted-foreground">
                     {formatMs(c.latencyMs)}
                   </span>
                   {c.httpStatus ? (
-                    <span className="shrink-0 tnum text-slate">{c.httpStatus}</span>
+                    <span className="shrink-0 tabular-nums text-subtle-foreground">{c.httpStatus}</span>
                   ) : null}
-                  <span className="min-w-0 flex-1 truncate text-slate">
+                  <span className="min-w-0 flex-1 truncate text-subtle-foreground">
                     {c.error ?? ""}
                   </span>
                 </li>
               ))}
               {recentChecks.length === 0 ? (
-                <li className="py-3 text-slate">no checks recorded yet</li>
+                <li className="py-3 text-subtle-foreground">no checks recorded yet</li>
               ) : null}
             </ol>
           </Panel>
@@ -461,9 +450,9 @@ export default async function MonitorPage({
       {/* ---- incident history -------------------------------------------- */}
       <section className="flex flex-col gap-3">
         <SectionHeader label="incident history" />
-        <Panel className="divide-y divide-hairline-soft">
+        <Panel className="divide-y divide-border">
           {incidents.length === 0 ? (
-            <p className="px-4 py-6 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-slate">
+            <p className="px-4 py-6 text-center signal type-label-sm text-subtle-foreground">
               no incidents recorded
             </p>
           ) : (
@@ -471,17 +460,17 @@ export default async function MonitorPage({
               <Link
                 key={i.id}
                 href={`/incidents/${i.id}`}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-panel-2"
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-muted"
               >
                 <span
                   className={
                     i.status === "resolved"
-                      ? "size-2 shrink-0 bg-live"
-                      : "size-2 shrink-0 bg-alarm"
+                      ? "size-2 shrink-0 bg-green-mark"
+                      : "size-2 shrink-0 bg-red-mark"
                   }
                   aria-hidden
                 />
-                <span className="shrink-0 tnum font-mono text-[11px] text-slate">
+                <span className="shrink-0 tabular-nums font-mono type-caption-sm text-subtle-foreground">
                   {i.startedAt.toLocaleString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -489,11 +478,11 @@ export default async function MonitorPage({
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[12px] text-ash">
+                <span className="min-w-0 flex-1 truncate type-caption-sm text-muted-foreground">
                   {i.cause ?? "Check failed"}
                 </span>
                 {i.flapping ? <MonoLabel tone="amp">flapping</MonoLabel> : null}
-                <span className="shrink-0 tnum font-mono text-[11px] text-bone">
+                <span className="shrink-0 tabular-nums font-mono type-caption-sm text-foreground">
                   {i.resolvedAt
                     ? formatDuration(i.resolvedAt.getTime() - i.startedAt.getTime())
                     : "ongoing"}
@@ -510,14 +499,14 @@ export default async function MonitorPage({
       {isAdmin ? (
         <section className="flex flex-col gap-3">
           <SectionHeader label="danger zone" />
-          <Panel className="flex flex-wrap items-center justify-between gap-4 border-alarm/25 px-4 py-3">
-            <p className="text-[12px] text-ash">
+          <Panel className="flex flex-wrap items-center justify-between gap-4 rounded-panel border-red-border px-4 py-3">
+            <p className="type-caption-sm text-muted-foreground">
               Deleting this monitor also removes its checks, rollups, and incident
               history. There is no undo.
             </p>
             <form action={deleteMonitorAction}>
               <input type="hidden" name="id" value={monitor.id} />
-              <Button type="submit" variant="danger" size="sm">
+              <Button type="submit" variant="destructive" size="sm">
                 delete monitor
               </Button>
             </form>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { MonoLabel } from "@/components/ui/mono";
-import { StatusDot, STATUS_LABEL } from "@/components/ui/status";
+import { StatusDot, STATUS_LABEL } from "@/components/monitor-status";
 import { TagList } from "@/components/ui/tag";
 import { readTags } from "@/lib/monitors/tags";
 import { KIND_LABEL } from "@/lib/probe";
@@ -22,18 +22,18 @@ export function MonitorCard({ health }: { health: MonitorHealth }) {
 
   const edge =
     status === "down"
-      ? "before:bg-alarm"
+      ? "before:bg-red-mark"
       : status === "degraded"
-        ? "before:bg-warn"
+        ? "before:bg-amber-mark"
         : status === "paused"
-          ? "before:bg-slate"
+          ? "before:bg-gray-solid"
           : "before:bg-transparent";
 
   return (
     <Link
       href={`/monitors/${monitor.id}`}
       className={cn(
-        "group relative flex flex-col gap-4 border border-hairline-soft bg-panel p-4 transition-colors duration-150 hover:border-hairline hover:bg-panel-2",
+        "group relative flex flex-col gap-4 overflow-hidden rounded-panel border border-border bg-card p-4 shadow-raised transition-colors duration-150 hover:border-gray-hairline-strong hover:bg-muted",
         "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:content-['']",
         edge,
       )}
@@ -42,11 +42,11 @@ export function MonitorCard({ health }: { health: MonitorHealth }) {
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <StatusDot status={status} beacon />
-            <span className="truncate text-[14px] font-medium tracking-tight text-bone">
+            <span className="truncate type-body font-medium text-foreground">
               {monitor.name}
             </span>
           </div>
-          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate">
+          <div className="flex items-center gap-2 signal type-label-xs text-subtle-foreground">
             <span>{KIND_LABEL[monitor.kind]}</span>
             <span aria-hidden>·</span>
             <span className="truncate">
@@ -95,7 +95,7 @@ export function MonitorCard({ health }: { health: MonitorHealth }) {
       <TagList tags={readTags(monitor.tags)} />
 
       {monitor.lastError && status !== "paused" ? (
-        <p className="truncate border-l-2 border-alarm/40 pl-2 font-mono text-[10px] text-alarm">
+        <p className="truncate border-l-2 border-red-border pl-2 font-mono type-caption-sm text-red-text">
           {monitor.lastError}
         </p>
       ) : null}
@@ -115,7 +115,7 @@ function Stat({
   return (
     <div className="flex flex-col gap-1" title={title}>
       <MonoLabel tone="slate">{label}</MonoLabel>
-      <span className="tnum font-mono text-[12px] text-bone">{value}</span>
+      <span className="tabular-nums font-mono type-caption-sm text-foreground">{value}</span>
     </div>
   );
 }
@@ -132,7 +132,7 @@ function Sparkline({
 }) {
   if (tape.length === 0) {
     return (
-      <div className="hatch h-9 border border-dashed border-hairline-soft" aria-hidden />
+      <div className="hatch h-9 rounded-control-md border border-dashed border-border" aria-hidden />
     );
   }
 
@@ -143,10 +143,10 @@ function Sparkline({
       {tape.map((t, i) => {
         const tone =
           t.status === "down"
-            ? "bg-alarm"
+            ? "bg-red-mark"
             : t.status === "degraded"
-              ? "bg-warn"
-              : "bg-live/70 group-hover:bg-live";
+              ? "bg-amber-mark"
+              : "bg-green-mark/70 group-hover:bg-green-mark";
         // Failures have no latency, so they render full height: an outage should be
         // the tallest thing in the strip, not the shortest.
         const pct =

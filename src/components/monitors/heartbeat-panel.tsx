@@ -75,7 +75,7 @@ export function HeartbeatPanel({
         {canRotate ? (
           <form action={rotateHeartbeatTokenAction}>
             <input type="hidden" name="id" value={monitorId} />
-            <Button type="submit" variant="bracket" size="sm">
+            <Button type="submit" variant="ghost" size="sm">
               rotate
             </Button>
           </form>
@@ -83,23 +83,23 @@ export function HeartbeatPanel({
       </SectionHeader>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 border border-hairline-soft bg-void px-3 py-2.5">
-          <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-amp">
+        <div className="flex items-center gap-2 rounded-control-md border border-border bg-background px-3 py-2.5">
+          <code className="min-w-0 flex-1 truncate font-mono type-caption-sm text-foreground">
             {url}
           </code>
           <Button
             type="button"
-            variant="bracket"
+            variant="ghost"
             size="sm"
             onClick={() => void copy(url, "url")}
           >
             {copied === "url" ? "copied" : "copy"}
           </Button>
         </div>
-        <p className="text-[12px] leading-relaxed text-slate">
-          Watchman expects a call every <strong className="text-ash">{intervalSec}s</strong>,
+        <p className="type-caption-sm text-subtle-foreground">
+          Watchman expects a call every <strong className="text-muted-foreground">{intervalSec}s</strong>,
           and alerts once it is{" "}
-          <strong className="text-ash">{graceSec}s</strong> late. Anyone holding this
+          <strong className="text-muted-foreground">{graceSec}s</strong> late. Anyone holding this
           URL can mark the job alive or failed — it grants nothing else, but treat it
           as a secret and rotate it if it leaks.
         </p>
@@ -114,18 +114,18 @@ export function HeartbeatPanel({
               <MonoLabel>{s.label}</MonoLabel>
               <Button
                 type="button"
-                variant="bracket"
+                variant="ghost"
                 size="sm"
                 onClick={() => void copy(s.code, s.label)}
               >
                 {copied === s.label ? "copied" : "copy"}
               </Button>
             </div>
-            <pre className="overflow-x-auto border border-hairline-soft bg-void px-3 py-2.5 font-mono text-[11px] leading-relaxed text-bone">
+            <pre className="overflow-x-auto rounded-control-md border border-border bg-muted px-3 py-2.5 font-mono type-caption-sm text-foreground">
               {s.code}
             </pre>
             {s.hint ? (
-              <p className="text-[11px] text-slate">{s.hint}</p>
+              <p className="type-caption-sm text-subtle-foreground">{s.hint}</p>
             ) : null}
           </div>
         ))}

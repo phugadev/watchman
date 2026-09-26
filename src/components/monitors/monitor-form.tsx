@@ -50,7 +50,7 @@ const initial: MonitorActionState = {};
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="solid" disabled={pending} className="relative overflow-hidden">
+    <Button type="submit" disabled={pending} className="relative overflow-hidden">
       {pending ? "Saving…" : label}
       {pending ? <span className="anim-sweep absolute inset-x-0 bottom-0 h-0.5" /> : null}
     </Button>
@@ -185,9 +185,9 @@ export function MonitorForm({
             />
           </Field>
         ) : (
-          <div className="border border-dashed border-hairline-soft bg-void/50 px-4 py-3">
+          <div className="rounded-panel border border-dashed border-border bg-background/50 px-4 py-3">
             <MonoLabel tone="amp">no target needed</MonoLabel>
-            <p className="mt-2 text-[12px] leading-relaxed text-ash">
+            <p className="mt-2 type-caption-sm text-muted-foreground">
               {editing
                 ? "The ping URL is on the monitor page — paste it into your cron job or worker."
                 : "Watchman will generate a unique ping URL when you save. Add it to the end of your job and it will alert if the job stops calling in."}
@@ -202,7 +202,7 @@ export function MonitorForm({
           <SectionHeader label="request &amp; assertions" />
           <Rule />
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Method" htmlFor="method">
               <Select id="method" name="method" defaultValue={monitor?.method ?? "GET"}>
                 {["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"].map((m) => (
@@ -259,7 +259,7 @@ export function MonitorForm({
             />
           </Field>
 
-          <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_12rem]">
             <Field
               label="Body assertion"
               htmlFor="keyword"
@@ -320,7 +320,7 @@ export function MonitorForm({
           <SectionHeader label="record &amp; assertions" />
           <Rule />
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Record type" htmlFor="dnsRecordType">
               <Select
                 id="dnsRecordType"
@@ -351,7 +351,7 @@ export function MonitorForm({
             </Field>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_12rem]">
             <Field
               label="Expected answer"
               htmlFor="dnsExpected"
@@ -387,9 +387,9 @@ export function MonitorForm({
             </Field>
           </div>
 
-          <p className="text-[12px] leading-relaxed text-ash">
+          <p className="type-caption-sm text-muted-foreground">
             MX and SRV answers are compared in zone-file order —{" "}
-            <code className="font-mono text-bone">10 mail.example.com</code>. TXT
+            <code className="font-mono text-foreground">10 mail.example.com</code>. TXT
             records are joined back together first, so a DKIM key split across
             chunks matches the value you published.
           </p>
@@ -401,7 +401,7 @@ export function MonitorForm({
         <SectionHeader label="timing &amp; sensitivity" />
         <Rule />
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field
             label={isHeartbeat ? "Expected every (seconds)" : "Check interval (seconds)"}
             htmlFor="intervalSec"
@@ -459,7 +459,7 @@ export function MonitorForm({
           )}
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field
             label="Failures before alerting"
             htmlFor="confirmFailures"
@@ -512,7 +512,7 @@ export function MonitorForm({
           </Field>
         ) : null}
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field
             label="SLO target (%)"
             htmlFor="sloTargetPct"
@@ -555,10 +555,10 @@ export function MonitorForm({
         <Rule />
 
         {channels.length === 0 ? (
-          <p className="text-[12px] leading-relaxed text-ash">
+          <p className="type-caption-sm text-muted-foreground">
             No alert channels exist yet, so this monitor will record outages but tell
             nobody about them.{" "}
-            <Link href="/channels" className="text-amp hover:underline">
+            <Link href="/channels" className="text-foreground hover:underline">
               Add a channel
             </Link>{" "}
             to fix that.
@@ -573,9 +573,9 @@ export function MonitorForm({
                   name="channelIds"
                   value={c.id}
                   defaultChecked={attachedChannelIds.includes(c.id)}
-                  className="size-3.5 appearance-none border border-hairline bg-void checked:border-amp checked:bg-amp"
+                  className="size-3.5 appearance-none rounded-xs border border-gray-hairline-strong bg-background checked:border-foreground checked:bg-primary"
                 />
-                <span className="text-[13px] text-bone">{c.name}</span>
+                <span className="type-caption text-foreground">{c.name}</span>
                 <MonoLabel tone="slate">{c.kind}</MonoLabel>
               </label>
             ))}
@@ -619,7 +619,7 @@ export function MonitorForm({
         <Submit label={editing ? "Save changes" : "Create monitor"} />
         <Link
           href={editing ? `/monitors/${monitor!.id}` : "/monitors"}
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate hover:text-ash"
+          className="signal type-label-sm text-subtle-foreground hover:text-muted-foreground"
         >
           Cancel
         </Link>

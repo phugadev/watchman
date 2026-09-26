@@ -49,10 +49,19 @@ from anywhere else will produce a dashboard that disagrees with the check histor
 probe for the duration. Queue the side effect and run it after the commit — see
 `recordCheck` for the pattern.
 
-**Colour is signal.** Mint means operational, amber degraded, red down, acid yellow
-attention. Nothing in the UI is coloured decoratively, and adding a sixth accent will
-be pushed back on. Squares, not rounded corners; radius is reserved for pills and
-avatars.
+**The UI is built on [Minima](https://github.com/phugadev/minima).** Colour, type,
+space, radius, depth, focus and both light and dark modes come from its theme, installed
+from the registry into `styles/minima.css` with its components in `src/components/ui/`
+(`button`, `input`, `tabs`, `stat`, `status`, `layout`). Do not edit those files; re-add
+them with `npx shadcn@latest add phugadev/minima/<item> --overwrite`. What is Watchman's
+own — the instrument textures, the tape's shape cues, the crop-mark frames, the
+animations — lives in `src/app/globals.css`. Ask for a role (`text-muted-foreground`,
+`bg-red-fill`, `type-label-xs`), never a colour value or a pixel size.
+
+**Colour is signal.** Green means operational, amber degraded, red down, purple
+maintenance, blue informational — Minima's state hues, used by role: `-text` for
+coloured words, `-mark` for dots and bars, `-fill` and `-border` for a tinted chip.
+Nothing in the UI is coloured decoratively; emphasis is the foreground, not a hue.
 
 **Colour is never the only carrier of meaning.** Roughly 1 in 12 men has a red-green
 deficiency, and the status page is read by the public rather than by colleagues. Any state

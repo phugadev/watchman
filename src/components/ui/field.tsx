@@ -1,10 +1,18 @@
-import type { ReactNode, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 import { MonoLabel } from "./mono";
 
-/** Shared control chrome: square, hairline, amp-yellow focus, no radius. */
+/*
+ * Form fields. Input is Minima's (components/ui/input.tsx, from the registry).
+ * Minima ships no textarea, select or switch, so those three are Watchman's,
+ * built from the same tokens as Minima's input so a form reads as one set:
+ * control height and radius, the input border, type-field (16px on phones,
+ * so iOS does not zoom), and Minima's focus ring.
+ */
+export { Input } from "./input";
+
 const control =
-  "w-full border border-hairline-soft bg-void px-3 py-2 font-mono text-[13px] text-bone placeholder:text-slate transition-colors duration-150 hover:border-hairline focus:border-amp focus:outline-none disabled:opacity-40";
+  "w-full min-w-0 rounded-control-md border border-input bg-transparent px-2.5 py-1 type-field text-foreground transition-colors placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive md:type-body dark:bg-input/30";
 
 export function Field({
   label,
@@ -24,72 +32,49 @@ export function Field({
   required?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-inset", className)}>
       <label htmlFor={htmlFor} className="flex items-baseline gap-1.5">
         <MonoLabel>{label}</MonoLabel>
         {required ? (
-          <span className="text-[10px] leading-none text-amp" aria-hidden>
+          <span className="type-label-xs text-foreground" aria-hidden>
             *
           </span>
         ) : null}
       </label>
       {children}
       {error ? (
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-alarm">
-          {error}
-        </p>
+        <p className="signal type-label-xs text-red-text">{error}</p>
       ) : hint ? (
-        <p className="text-[12px] leading-relaxed text-slate">{hint}</p>
+        <p className="type-caption text-subtle-foreground">{hint}</p>
       ) : null}
     </div>
   );
 }
 
-export function Input({
-  className,
-  ...rest
-}: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(control, className)} {...rest} />;
+export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={cn(control, "min-h-24 resize-y py-2", className)} {...rest} />;
 }
 
-export function Textarea({
-  className,
-  ...rest
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+/** A native select — the platform's own picker on every device — dressed as
+    a Minima input, with the chevron drawn in the current text colour so it
+    follows the mode. */
+export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <textarea className={cn(control, "resize-y leading-relaxed", className)} {...rest} />
+    <span className="relative block">
+      <select className={cn(control, "h-control-md appearance-none pr-9", className)} {...rest}>
+        {children}
+      </select>
+      <svg
+        aria-hidden
+        viewBox="0 0 10 6"
+        className="pointer-events-none absolute right-3 top-1/2 size-2.5 -translate-y-1/2 fill-current text-subtle-foreground"
+      >
+        <path d="M0 0l5 6 5-6z" />
+      </svg>
+    </span>
   );
 }
 
-export function Select({
-  className,
-  children,
-  ...rest
-}: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      className={cn(
-        control,
-        "appearance-none bg-[length:10px] bg-[right_0.75rem_center] bg-no-repeat pr-9 uppercase tracking-[0.1em]",
-        // Was destructured and then dropped, so every `className` passed to a Select
-        // was silently ignored. Caught by no-unused-vars.
-        className,
-      )}
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%236b7d72'/></svg>\")",
-      }}
-      {...rest}
-    >
-      {children}
-    </select>
-  );
-}
-
-/**
- * Switch — a square sliding toggle. Rendered as a real checkbox so it submits
- * with the form and keeps native keyboard behaviour.
- */
 export function Switch({
   label,
   hint,
@@ -108,13 +93,8 @@ export function Switch({
   disabled?: boolean;
 }) {
   return (
-    <label
-      className={cn(
-        "group flex cursor-pointer items-start gap-3",
-        disabled && "cursor-not-allowed opacity-40",
-      )}
-    >
-      <span className="relative mt-0.5 inline-flex h-4 w-8 shrink-0 border border-hairline bg-void transition-colors group-has-checked:border-amp group-has-checked:bg-amp/20">
+    <label className={cn("group flex cursor-pointer items-start gap-3", disabled && "cursor-not-allowed opacity-50")}>
+      <span className="relative mt-0.5 inline-flex h-5 w-9 shrink-0 rounded-full border border-input bg-gray-fill transition-colors duration-quick group-has-checked:border-transparent group-has-checked:bg-primary">
         <input
           type="checkbox"
           name={name}
@@ -122,28 +102,25 @@ export function Switch({
           checked={checked}
           onChange={onChange}
           disabled={disabled}
-          className="peer absolute inset-0 cursor-pointer appearance-none"
+          className="peer absolute inset-0 cursor-pointer appearance-none rounded-full"
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute left-px top-px size-3 bg-slate transition-transform duration-150 ease-[var(--ease-instrument)] peer-checked:translate-x-4 peer-checked:bg-amp"
+          className="pointer-events-none absolute left-0.5 top-0.5 size-3.5 rounded-full bg-background shadow-raised transition-transform duration-quick ease-out peer-checked:translate-x-4"
         />
       </span>
       <span className="flex flex-col gap-1">
         <MonoLabel tone="bone">{label}</MonoLabel>
-        {hint ? (
-          <span className="text-[12px] leading-relaxed text-slate">{hint}</span>
-        ) : null}
+        {hint ? <span className="type-caption text-subtle-foreground">{hint}</span> : null}
       </span>
     </label>
   );
 }
 
-/** Inline form-level error banner. */
 export function FormError({ children }: { children?: ReactNode }) {
   if (!children) return null;
   return (
-    <div className="border border-alarm/40 bg-alarm/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-alarm">
+    <div role="alert" className="rounded-control-md border border-red-border bg-red-fill px-3 py-2 type-caption text-red-text">
       {children}
     </div>
   );

@@ -27,7 +27,7 @@ const initial: ChannelActionState = {};
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="solid" size="sm" disabled={pending}>
+    <Button type="submit" size="sm" disabled={pending}>
       {pending ? "Saving…" : label}
     </Button>
   );
@@ -40,7 +40,7 @@ export function NewChannelForm() {
 
   if (!open) {
     return (
-      <Button type="button" variant="solid" size="sm" onClick={() => setOpen(true)}>
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
         new channel
       </Button>
     );
@@ -49,7 +49,7 @@ export function NewChannelForm() {
   return (
     <Panel inset className="flex w-full flex-col gap-5">
       <SectionHeader label="new alert channel">
-        <Button type="button" variant="bracket" size="sm" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           cancel
         </Button>
       </SectionHeader>
@@ -58,13 +58,13 @@ export function NewChannelForm() {
       <form action={action} className="flex flex-col gap-5">
         <FormError>{state.error}</FormError>
         {state.ok && !state.secret ? (
-          <p className="border border-live/40 bg-live/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-live">
+          <p className="rounded-control-md border border-green-border bg-green-fill px-3 py-2 signal type-label-sm text-green-text">
             Channel created
           </p>
         ) : null}
         {state.secret ? <SecretReveal secret={state.secret} /> : null}
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field label="Name" htmlFor="ch-name" required>
             <Input
               id="ch-name"
@@ -186,7 +186,7 @@ function KindFields({ kind }: { kind: ChannelKind }) {
     case "email":
       return (
         <>
-          <div className="grid gap-5 sm:grid-cols-[1fr_8rem]">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_8rem]">
             <Field label="SMTP host" htmlFor="ch-host" required>
               <Input
                 id="ch-host"
@@ -215,7 +215,7 @@ function KindFields({ kind }: { kind: ChannelKind }) {
             hint="On for port 465, where the session is encrypted from the first byte. Leave off for 587, which starts in the clear and upgrades with STARTTLS."
           />
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field
               label="Username"
               htmlFor="ch-user"
@@ -339,17 +339,17 @@ function SecretReveal({ secret }: { secret: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-2.5 border border-amp/40 bg-amp/5 p-4">
+    <div className="flex flex-col gap-2.5 rounded-panel border border-foreground bg-gray-tint p-4">
       <MonoLabel tone="amp">signing secret — shown once</MonoLabel>
-      <div className="flex items-center gap-2 border border-hairline-soft bg-void px-3 py-2.5">
-        <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-amp">
+      <div className="flex items-center gap-2 rounded-control-md border border-border bg-background px-3 py-2.5">
+        <code className="min-w-0 flex-1 truncate font-mono type-caption-sm text-foreground">
           {secret}
         </code>
-        <Button type="button" variant="bracket" size="sm" onClick={() => void copy()}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => void copy()}>
           {copied ? "copied" : "copy"}
         </Button>
       </div>
-      <p className="text-[11px] leading-relaxed text-ash">
+      <p className="type-caption-sm text-muted-foreground">
         Your receiver needs this to verify the <code>x-watchman-signature</code>{" "}
         header. Watchman will not show it again — rotate the channel if you lose it.
       </p>
@@ -376,7 +376,7 @@ export function RotateSecretButton({ channelId }: { channelId: string }) {
 function RotateSubmit() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="bracket" size="sm" disabled={pending}>
+    <Button type="submit" variant="ghost" size="sm" disabled={pending}>
       {pending ? "rotating" : "rotate secret"}
     </Button>
   );
@@ -409,7 +409,7 @@ export function TestChannelButton({ channelId }: { channelId: string }) {
 function TestSubmit() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="bracket" size="sm" disabled={pending}>
+    <Button type="submit" variant="ghost" size="sm" disabled={pending}>
       {pending ? "sending" : "test"}
     </Button>
   );

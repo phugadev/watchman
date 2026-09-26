@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summariseTape, type TapeBucket } from "./status";
+import { summariseTape, type TapeBucket } from "./monitor-status";
 
 const bucket = (
   status: TapeBucket["status"],

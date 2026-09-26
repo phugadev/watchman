@@ -7,7 +7,7 @@ import { CropFrame, Panel, Rule } from "@/components/ui/frame";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { Mark } from "@/components/ui/logo";
 import { MonoLabel, Readout } from "@/components/ui/mono";
-import { StatusPill, UptimeTape, UptimeTapeLegend } from "@/components/ui/status";
+import { StatusPill, UptimeTape, UptimeTapeLegend } from "@/components/monitor-status";
 import { computeGrade } from "@/lib/metrics/grade";
 import {
   WINDOWS,
@@ -191,7 +191,7 @@ export default async function PublicStatusPage({
   return (
     <main className="mx-auto flex min-h-dvh max-w-4xl flex-col gap-10 px-5 py-12 sm:py-16">
       {!page.published ? (
-        <div className="border border-warn/40 bg-warn/10 px-4 py-2.5">
+        <div className="rounded-panel border border-amber-border bg-amber-fill px-4 py-2.5">
           <MonoLabel tone="amp">
             draft — visible to you because you are signed in
           </MonoLabel>
@@ -200,7 +200,7 @@ export default async function PublicStatusPage({
 
       {/* ---- hero -------------------------------------------------------- */}
       <header className="flex flex-col gap-6">
-        <h1 className="text-xl font-semibold tracking-tight text-bone">
+        <h1 className="type-heading font-semibold text-foreground">
           {page.title}
         </h1>
 
@@ -217,10 +217,10 @@ export default async function PublicStatusPage({
             <h2
               className={
                 anyDown
-                  ? "text-3xl font-semibold tracking-tight text-alarm sm:text-4xl"
+                  ? "type-title font-semibold text-red-text sm:type-display"
                   : anyDegraded
-                    ? "text-3xl font-semibold tracking-tight text-warn sm:text-4xl"
-                    : "text-3xl font-semibold tracking-tight text-live sm:text-4xl"
+                    ? "type-title font-semibold text-amber-text sm:type-display"
+                    : "type-title font-semibold text-green-text sm:type-display"
               }
             >
               {headline}
@@ -233,7 +233,7 @@ export default async function PublicStatusPage({
           </div>
 
           {page.description ? (
-            <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-ash">
+            <p className="mt-4 max-w-xl type-caption text-muted-foreground">
               {page.description}
             </p>
           ) : null}
@@ -244,27 +244,27 @@ export default async function PublicStatusPage({
       {openIncidents.length > 0 ? (
         <section className="flex flex-col gap-3">
           <MonoLabel tone="alarm">active incidents</MonoLabel>
-          <Panel className="divide-y divide-hairline-soft">
+          <Panel className="divide-y divide-border">
             {openIncidents.map(({ incident }) => {
               const service = services.find((s) => s.id === incident.monitorId);
               return (
                 <div key={incident.id} className="flex flex-col gap-1.5 px-4 py-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
-                    <span className="text-[14px] font-medium text-bone">
+                    <span className="type-body font-medium text-foreground">
                       {service?.name ?? "Service"}
                     </span>
-                    <span className="tnum font-mono text-[11px] text-alarm">
+                    <span className="tabular-nums font-mono type-caption-sm text-red-text">
                       ongoing {formatDuration(Date.now() - incident.startedAt.getTime())}
                     </span>
                   </div>
                   {/* Internal error text is deliberately not published — a raw
                       ECONNREFUSED tells a customer nothing and leaks topology. */}
-                  <p className="text-[12px] text-ash">
+                  <p className="type-caption-sm text-muted-foreground">
                     {incident.status === "acknowledged"
                       ? "We are aware of this and investigating."
                       : "We are investigating."}
                   </p>
-                  <span className="tnum font-mono text-[10px] text-slate">
+                  <span className="tabular-nums font-mono type-caption-sm text-subtle-foreground">
                     since{" "}
                     {incident.startedAt.toLocaleString(undefined, {
                       month: "short",
@@ -283,7 +283,7 @@ export default async function PublicStatusPage({
       {/* ---- services ---------------------------------------------------- */}
       {services.length === 0 ? (
         <Panel inset>
-          <p className="py-6 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-slate">
+          <p className="py-6 text-center signal type-label-sm text-subtle-foreground">
             no services published yet
           </p>
         </Panel>
@@ -292,7 +292,7 @@ export default async function PublicStatusPage({
           <section key={group} className="flex flex-col gap-3">
             {group && groups.size > 1 ? <MonoLabel>{group}</MonoLabel> : null}
 
-            <Panel className="divide-y divide-hairline-soft">
+            <Panel className="divide-y divide-border">
               {list.map((s) => (
                 <div key={s.id} className="flex flex-col gap-3 px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -300,16 +300,16 @@ export default async function PublicStatusPage({
                       {page.showGrades ? (
                         <GradeBadge grade={s.grade} size="xs" />
                       ) : null}
-                      <span className="truncate text-[14px] text-bone">{s.name}</span>
+                      <span className="truncate type-body text-foreground">{s.name}</span>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-5">
                       {page.showLatency && s.summary.p95Ms !== null ? (
-                        <span className="tnum font-mono text-[11px] text-slate">
+                        <span className="tabular-nums font-mono type-caption-sm text-subtle-foreground">
                           {formatMs(s.summary.p95Ms)}
                         </span>
                       ) : null}
-                      <span className="tnum font-mono text-[11px] text-ash">
+                      <span className="tabular-nums font-mono type-caption-sm text-muted-foreground">
                         {s.summary.total === 0
                           ? "—"
                           : formatUptime(s.summary.uptimePct)}
@@ -344,7 +344,7 @@ export default async function PublicStatusPage({
       {history.length > 0 ? (
         <section className="flex flex-col gap-3">
           <MonoLabel>past incidents</MonoLabel>
-          <Panel className="divide-y divide-hairline-soft">
+          <Panel className="divide-y divide-border">
             {historyByDay.map(([day, entries]) => (
               <div key={day} className="flex flex-col gap-2.5 px-4 py-3.5">
                 <MonoLabel tone="slate">
@@ -363,19 +363,19 @@ export default async function PublicStatusPage({
                       key={incident.id}
                       className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
                     >
-                      <span className="size-1.5 shrink-0 bg-live" aria-hidden />
-                      <span className="text-[13px] text-bone">
+                      <span className="size-1.5 shrink-0 bg-green-mark" aria-hidden />
+                      <span className="type-caption text-foreground">
                         {service?.name ?? "Service"}
                       </span>
                       {/* Same rule as active incidents: duration and timing only,
                           never the internal cause. */}
-                      <span className="text-[12px] text-ash">
+                      <span className="type-caption-sm text-muted-foreground">
                         recovered after{" "}
                         {incident.durationMs === null
                           ? "an outage"
                           : formatDuration(incident.durationMs)}
                       </span>
-                      <span className="ml-auto shrink-0 tnum font-mono text-[10px] text-slate">
+                      <span className="ml-auto shrink-0 tabular-nums font-mono type-caption-sm text-subtle-foreground">
                         {incident.startedAt.toLocaleTimeString(undefined, {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -397,7 +397,7 @@ export default async function PublicStatusPage({
       ) : openIncidents.length === 0 ? (
         // Saying so beats an absent section, which reads as "history not implemented".
         <Panel inset>
-          <p className="py-5 text-center text-[12px] text-slate">
+          <p className="py-5 text-center type-caption-sm text-subtle-foreground">
             No incidents in the last {page.historyDays} days.
           </p>
         </Panel>
@@ -416,7 +416,7 @@ export default async function PublicStatusPage({
         {page.contactUrl ? (
           <a
             href={page.contactUrl}
-            className="font-mono text-[10px] uppercase tracking-[0.14em] text-amp hover:underline"
+            className="signal type-label-xs text-foreground hover:underline"
           >
             report a problem →
           </a>
@@ -426,8 +426,8 @@ export default async function PublicStatusPage({
       <Rule />
 
       <footer className="flex items-center justify-center gap-2 pb-4">
-        <Mark size={13} className="text-slate" live={false} />
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-slate">
+        <Mark size={13} className="text-subtle-foreground" live={false} />
+        <span className="signal type-label-xs text-subtle-foreground">
           monitored with Watchman
         </span>
       </footer>

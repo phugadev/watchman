@@ -43,12 +43,12 @@ export function LatencyChart({
     return (
       <div
         className={cn(
-          "grid-paper flex items-center justify-center border border-hairline-soft",
+          "grid-paper flex items-center justify-center rounded-panel border border-border",
           className,
         )}
         style={{ height }}
       >
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate">
+        <span className="signal type-label-xs text-subtle-foreground">
           no latency data in this window
         </span>
       </div>
@@ -110,8 +110,8 @@ export function LatencyChart({
       >
         <defs>
           <linearGradient id="wm-latency-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-amp)" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="var(--color-amp)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--foreground)" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="var(--foreground)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -122,7 +122,7 @@ export function LatencyChart({
             x2={W - PAD.right}
             y1={PAD.top + plotH * f}
             y2={PAD.top + plotH * f}
-            stroke="var(--color-hairline-soft)"
+            stroke="var(--border)"
             strokeWidth="1"
             strokeDasharray="2 5"
           />
@@ -137,14 +137,14 @@ export function LatencyChart({
             x2={x(d.at)}
             y1={PAD.top}
             y2={PAD.top + plotH}
-            stroke="var(--color-alarm)"
+            stroke="var(--red-mark)"
             strokeWidth="2"
             strokeOpacity="0.45"
           />
         ))}
 
         {band ? (
-          <path d={band} fill="var(--color-amp)" fillOpacity="0.1" stroke="none" />
+          <path d={band} fill="var(--foreground)" fillOpacity="0.1" stroke="none" />
         ) : null}
 
         <path d={area} fill="url(#wm-latency-fill)" stroke="none" />
@@ -155,7 +155,7 @@ export function LatencyChart({
             x2={W - PAD.right}
             y1={y(degradedMs)}
             y2={y(degradedMs)}
-            stroke="var(--color-warn)"
+            stroke="var(--amber-mark)"
             strokeWidth="1"
             strokeDasharray="6 4"
             strokeOpacity="0.8"
@@ -165,7 +165,7 @@ export function LatencyChart({
         <path
           d={line}
           fill="none"
-          stroke="var(--color-amp)"
+          stroke="var(--foreground)"
           strokeWidth="1.75"
           // preserveAspectRatio="none" scales strokes non-uniformly; this keeps the
           // line an even weight instead of stretching it horizontally.
@@ -176,18 +176,18 @@ export function LatencyChart({
 
       {/* Axis labels live in HTML rather than SVG text so they are not distorted
           by the non-uniform viewBox scaling. */}
-      <div className="pointer-events-none absolute right-1 top-0 tnum font-mono text-[9px] text-slate">
+      <div className="pointer-events-none absolute right-1 top-0 tabular-nums font-mono type-caption-sm text-subtle-foreground">
         {formatMs(yMax)}
       </div>
       {degradedMs ? (
         <div
-          className="pointer-events-none absolute left-1 tnum font-mono text-[9px] text-warn"
+          className="pointer-events-none absolute left-1 tabular-nums font-mono type-caption-sm text-amber-text"
           style={{ top: `${(y(degradedMs) / H) * 100}%`, transform: "translateY(-120%)" }}
         >
           degraded {formatMs(degradedMs)}
         </div>
       ) : null}
-      <div className="mt-1 flex justify-between tnum font-mono text-[9px] text-slate">
+      <div className="mt-1 flex justify-between tabular-nums font-mono type-caption-sm text-subtle-foreground">
         <span>{new Date(t0).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
         <span>now</span>
       </div>

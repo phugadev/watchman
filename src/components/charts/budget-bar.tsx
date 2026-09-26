@@ -19,10 +19,10 @@ export function BudgetBar({
 }) {
   const pct = Math.min(100, Math.max(0, budget.burnRatio * 100));
   const tone = budget.exhausted
-    ? "bg-alarm"
+    ? "bg-red-mark"
     : pct > 75
-      ? "bg-warn"
-      : "bg-live";
+      ? "bg-amber-mark"
+      : "bg-green-mark";
 
   return (
     <div className={cn("flex flex-col gap-2.5", className)}>
@@ -35,9 +35,9 @@ export function BudgetBar({
         </MonoLabel>
       </div>
 
-      <div className="relative h-2.5 w-full overflow-hidden border border-hairline-soft bg-void">
+      <div className="relative h-2.5 w-full overflow-hidden rounded-full border border-border bg-background">
         <div
-          className={cn("h-full transition-[width] duration-500 ease-[var(--ease-instrument)]", tone)}
+          className={cn("h-full transition-[width] duration-500 ease-out", tone)}
           style={{ width: `${pct}%` }}
         />
         {/* Quarter ticks, so the eye can read the fill without a percentage. */}
@@ -45,19 +45,19 @@ export function BudgetBar({
           <span
             key={t}
             aria-hidden
-            className="absolute top-0 h-full w-px bg-void/70"
+            className="absolute top-0 h-full w-px bg-background/70"
             style={{ left: `${t}%` }}
           />
         ))}
       </div>
 
-      <div className="flex items-baseline justify-between gap-3 tnum font-mono text-[10px] uppercase tracking-[0.14em]">
-        <span className={budget.exhausted ? "text-alarm" : "text-ash"}>
+      <div className="flex items-baseline justify-between gap-3 tabular-nums signal type-label-xs">
+        <span className={budget.exhausted ? "text-red-text" : "text-muted-foreground"}>
           {budget.exhausted
             ? `over by ${formatDuration(budget.consumedMs - budget.allowedMs)}`
             : `${formatDuration(budget.remainingMs)} left`}
         </span>
-        <span className="text-slate">
+        <span className="text-subtle-foreground">
           {budget.targetPct}% target · {formatDuration(budget.allowedMs)} allowed
         </span>
       </div>
@@ -91,25 +91,25 @@ export function GradeBreakdown({
       {rows.map((r) => (
         <div key={r.label} className="flex items-center gap-3">
           <MonoLabel className="w-[4.5rem] shrink-0">{r.label}</MonoLabel>
-          <div className="h-1.5 flex-1 overflow-hidden bg-void">
+          <div className="h-1.5 flex-1 overflow-hidden bg-background">
             <div
               className={cn(
                 "h-full",
                 r.value === null
-                  ? "bg-hairline"
+                  ? "bg-gray-border-strong"
                   : r.value >= 85
-                    ? "bg-live"
+                    ? "bg-green-mark"
                     : r.value >= 60
-                      ? "bg-warn"
-                      : "bg-alarm",
+                      ? "bg-amber-mark"
+                      : "bg-red-mark",
               )}
               style={{ width: `${r.value ?? 0}%` }}
             />
           </div>
-          <span className="w-16 shrink-0 text-right tnum font-mono text-[10px] text-ash">
+          <span className="w-16 shrink-0 text-right tabular-nums font-mono type-caption-sm text-muted-foreground">
             {r.value === null ? "n/a" : r.value.toFixed(0)}
           </span>
-          <span className="w-8 shrink-0 text-right tnum font-mono text-[9px] text-slate">
+          <span className="w-8 shrink-0 text-right tabular-nums font-mono type-caption-sm text-subtle-foreground">
             {r.weight}
           </span>
         </div>
@@ -117,9 +117,9 @@ export function GradeBreakdown({
       <div className="rule-dotted mt-1 pt-2.5">
         <div className="flex items-baseline justify-between">
           <MonoLabel tone="bone">composite</MonoLabel>
-          <span className="tnum font-mono text-[13px] text-amp">
+          <span className="tabular-nums font-mono type-caption text-foreground">
             {score.toFixed(1)}
-            <span className="text-slate"> / 100</span>
+            <span className="text-subtle-foreground"> / 100</span>
           </span>
         </div>
       </div>

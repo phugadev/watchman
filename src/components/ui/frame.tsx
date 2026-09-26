@@ -19,8 +19,8 @@ export function Panel({
   return (
     <Tag
       className={cn(
-        "border border-hairline-soft bg-panel",
-        inset && "p-4 sm:p-5",
+        "rounded-panel border border-border bg-card",
+        inset && "p-gutter",
         className,
       )}
     >
@@ -48,10 +48,10 @@ export function CropFrame({
   hatch?: boolean;
 }) {
   const stroke = {
-    hairline: "border-hairline",
-    amp: "border-amp",
-    live: "border-live",
-    alarm: "border-alarm",
+    hairline: "border-gray-hairline-strong",
+    amp: "border-foreground",
+    live: "border-green-mark",
+    alarm: "border-red-mark",
   }[tone];
 
   const corner = "pointer-events-none absolute";
@@ -98,7 +98,7 @@ export function HatchFrame({
   return (
     <div
       className={cn(
-        "hatch border border-dashed border-hairline-soft",
+        "hatch rounded-panel border border-dashed border-border",
         className,
       )}
     >
@@ -126,9 +126,9 @@ export function SectionHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center justify-between gap-4", className)}>
-      <h2 className="flex items-baseline gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ash">
-        <span className="text-slate" aria-hidden>
+    <div className={cn("flex items-center justify-between gap-gutter", className)}>
+      <h2 className="signal flex items-baseline gap-2 type-label-sm text-muted-foreground">
+        <span className="text-subtle-foreground" aria-hidden>
           &gt;
         </span>
         {label}
@@ -151,12 +151,12 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <HatchFrame className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ash">
+    <HatchFrame className="flex flex-col items-center gap-inset px-stack py-section text-center">
+      <p className="signal type-label-sm text-muted-foreground">
         {title}
       </p>
       {hint ? (
-        <p className="max-w-sm text-sm leading-relaxed text-slate">{hint}</p>
+        <p className="max-w-sm type-body text-subtle-foreground">{hint}</p>
       ) : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </HatchFrame>
