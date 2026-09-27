@@ -48,7 +48,7 @@ export default async function StatusPagesPage() {
           hint="A status page publishes a chosen subset of monitors — with 90 days of uptime history — at a public URL, so you can point users at it instead of answering the same question repeatedly."
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {pages.map(({ page, itemCount }) => {
             const selected = db
               .select({ monitorId: statusPageItems.monitorId })
@@ -65,12 +65,12 @@ export default async function StatusPagesPage() {
                       <span
                         className={
                           page.published
-                            ? "size-2 shrink-0 bg-live"
-                            : "size-2 shrink-0 bg-slate"
+                            ? "size-2 shrink-0 bg-green-mark"
+                            : "size-2 shrink-0 bg-gray-solid"
                         }
                         aria-hidden
                       />
-                      <span className="truncate text-[14px] font-medium text-bone">
+                      <span className="truncate type-body font-medium text-foreground">
                         {page.title}
                       </span>
                     </div>
@@ -84,7 +84,7 @@ export default async function StatusPagesPage() {
                     <div className="flex shrink-0 items-center gap-2">
                       <form action={togglePublishedAction}>
                         <input type="hidden" name="id" value={page.id} />
-                        <Button type="submit" variant="bracket" size="sm">
+                        <Button type="submit" variant="ghost" size="sm">
                           {page.published ? "unpublish" : "publish"}
                         </Button>
                       </form>
@@ -92,9 +92,9 @@ export default async function StatusPagesPage() {
                         <input type="hidden" name="id" value={page.id} />
                         <Button
                           type="submit"
-                          variant="bracket"
+                          variant="ghost"
                           size="sm"
-                          className="hover:text-alarm"
+                          className="hover:text-red-text"
                         >
                           delete
                         </Button>
@@ -110,7 +110,7 @@ export default async function StatusPagesPage() {
                     <Link
                       href={`/status/${page.slug}`}
                       target="_blank"
-                      className="hover:text-amp"
+                      className="hover:text-foreground"
                     >
                       /status/{page.slug}
                     </Link>
@@ -121,13 +121,13 @@ export default async function StatusPagesPage() {
                 </div>
 
                 {page.description ? (
-                  <p className="text-[12px] leading-relaxed text-ash">
+                  <p className="type-caption-sm text-muted-foreground">
                     {page.description}
                   </p>
                 ) : null}
 
                 {!page.published ? (
-                  <p className="text-[11px] leading-relaxed text-slate">
+                  <p className="type-caption-sm text-subtle-foreground">
                     Drafts return 404 to the public but stay viewable while you are
                     signed in, so you can check it before announcing the link.
                   </p>

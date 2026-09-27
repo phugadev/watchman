@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { MonoLabel } from "@/components/ui/mono";
-import { StatusDot } from "@/components/ui/status";
+import { StatusDot } from "@/components/monitor-status";
 import type { MonitorStatus } from "@/lib/metrics/uptime";
 
 interface MonitorRef {
@@ -179,12 +179,12 @@ export function CommandPalette({
         type="button"
         aria-label="Close"
         onClick={close}
-        className="absolute inset-0 cursor-default bg-void/80 backdrop-blur-sm"
+        className="absolute inset-0 cursor-default bg-background/80 backdrop-blur-sm"
       />
 
-      <div className="anim-rise relative w-full max-w-lg border border-hairline bg-panel shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]">
-        <div className="flex items-center gap-2.5 border-b border-hairline-soft px-4">
-          <span className="font-mono text-[13px] text-slate" aria-hidden>
+      <div className="anim-rise relative w-full max-w-lg overflow-hidden rounded-panel border border-gray-hairline-strong bg-surface-modal shadow-modal">
+        <div className="flex items-center gap-2.5 border-b border-border px-4">
+          <span className="font-mono type-caption text-subtle-foreground" aria-hidden>
             &gt;
           </span>
           <input
@@ -209,7 +209,7 @@ export function CommandPalette({
               }
             }}
             placeholder="Jump to a monitor, or type a command…"
-            className="h-12 w-full bg-transparent font-mono text-[13px] text-bone placeholder:text-slate focus:outline-none"
+            className="h-12 w-full bg-transparent font-mono type-caption text-foreground placeholder:text-subtle-foreground focus:outline-none"
             autoComplete="off"
             spellCheck={false}
           />
@@ -217,7 +217,7 @@ export function CommandPalette({
 
         <div ref={listRef} className="max-h-[22rem] overflow-y-auto py-1.5">
           {results.length === 0 ? (
-            <p className="px-4 py-6 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-slate">
+            <p className="px-4 py-6 text-center signal type-label-sm text-subtle-foreground">
               nothing matches
             </p>
           ) : (
@@ -236,20 +236,20 @@ export function CommandPalette({
                     onMouseMove={() => setCursor(i)}
                     onClick={() => run(c)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 px-4 py-2 text-left font-mono text-[12px] transition-colors",
+                      "flex w-full items-center gap-2.5 px-4 py-2 text-left font-mono type-caption-sm transition-colors",
                       i === cursor
-                        ? "bg-panel-2 text-bone"
-                        : "text-ash hover:text-bone",
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {c.status ? (
                       <StatusDot status={c.status} />
                     ) : (
-                      <span className="size-2 shrink-0 border border-hairline" aria-hidden />
+                      <span className="size-2 shrink-0 rounded-full border border-gray-hairline-strong" aria-hidden />
                     )}
                     <span className="truncate">{c.label}</span>
                     {i === cursor ? (
-                      <span className="ml-auto shrink-0 text-[9px] uppercase tracking-[0.16em] text-slate">
+                      <span className="ml-auto shrink-0 signal type-label-xs text-subtle-foreground">
                         ↵
                       </span>
                     ) : null}
@@ -260,7 +260,7 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className="flex items-center gap-4 border-t border-hairline-soft px-4 py-2 font-mono text-[9px] uppercase tracking-[0.16em] text-slate">
+        <div className="flex items-center gap-4 border-t border-border px-4 py-2 signal type-label-xs text-subtle-foreground">
           <span>↑↓ navigate</span>
           <span>↵ open</span>
           <span>esc close</span>

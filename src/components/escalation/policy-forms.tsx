@@ -17,7 +17,7 @@ const initial: EscalationActionState = {};
 function Submit({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="solid" size="sm" disabled={pending}>
+    <Button type="submit" size="sm" disabled={pending}>
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -44,7 +44,7 @@ export function NewPolicyForm() {
 
   if (!open) {
     return (
-      <Button type="button" variant="solid" size="sm" onClick={() => setOpen(true)}>
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
         new policy
       </Button>
     );
@@ -53,7 +53,7 @@ export function NewPolicyForm() {
   return (
     <Panel inset className="flex w-full flex-col gap-5">
       <SectionHeader label="new escalation policy">
-        <Button type="button" variant="bracket" size="sm" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           cancel
         </Button>
       </SectionHeader>
@@ -62,7 +62,7 @@ export function NewPolicyForm() {
       <form action={action} className="flex flex-col gap-5">
         <FormError>{state.error}</FormError>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field label="Name" htmlFor="ep-name" required>
             <Input
               id="ep-name"
@@ -89,7 +89,7 @@ export function NewPolicyForm() {
           </Field>
         </div>
 
-        <p className="text-[12px] leading-relaxed text-ash">
+        <p className="type-caption-sm text-muted-foreground">
           A policy on its own does nothing. Add steps to it below, then attach it
           to a monitor from that monitor&rsquo;s alerting settings.
         </p>
@@ -113,7 +113,7 @@ export function EditPolicyForm({
       <input type="hidden" name="id" value={policy.id} />
       <FormError>{state.error}</FormError>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
         <Field label="Name" htmlFor={`name-${policy.id}`}>
           <Input
             id={`name-${policy.id}`}
@@ -162,7 +162,7 @@ export function AddStepForm({
       <input type="hidden" name="policyId" value={policyId} />
       <FormError>{state.error}</FormError>
 
-      <div className="grid gap-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end">
         <Field label="After (s)" htmlFor={`after-${policyId}`}>
           <Input
             id={`after-${policyId}`}

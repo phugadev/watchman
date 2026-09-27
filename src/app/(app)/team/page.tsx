@@ -25,7 +25,7 @@ export default async function TeamPage() {
     <div className="flex max-w-4xl flex-col gap-8">
       <SectionHeader label={`team · ${team.length}`} />
 
-      <Panel className="divide-y divide-hairline-soft">
+      <Panel className="divide-y divide-border">
         {team.map((u) => {
           const isSelf = u.id === admin.id;
           // Guard rails matching the server actions, so the UI never offers a
@@ -39,10 +39,10 @@ export default async function TeamPage() {
             >
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex items-center gap-2.5">
-                  <span className="truncate text-[13px] text-bone">{u.name}</span>
+                  <span className="truncate type-caption text-foreground">{u.name}</span>
                   {isSelf ? <MonoLabel tone="amp">you</MonoLabel> : null}
                 </div>
-                <span className="truncate font-mono text-[11px] text-slate">
+                <span className="truncate font-mono type-caption-sm text-subtle-foreground">
                   {u.email}
                 </span>
               </div>
@@ -51,7 +51,7 @@ export default async function TeamPage() {
                 {u.role}
               </MonoLabel>
 
-              <span className="w-28 shrink-0 text-right font-mono text-[10px] text-slate">
+              <span className="w-28 shrink-0 text-right font-mono type-caption-sm text-subtle-foreground">
                 {u.lastSeenAt ? formatAgo(u.lastSeenAt) : "never signed in"}
               </span>
 
@@ -64,7 +64,7 @@ export default async function TeamPage() {
                       name="role"
                       value={u.role === "admin" ? "member" : "admin"}
                     />
-                    <Button type="submit" variant="bracket" size="sm">
+                    <Button type="submit" variant="ghost" size="sm">
                       {u.role === "admin" ? "demote" : "promote"}
                     </Button>
                   </form>
@@ -75,9 +75,9 @@ export default async function TeamPage() {
                     <input type="hidden" name="id" value={u.id} />
                     <Button
                       type="submit"
-                      variant="bracket"
+                      variant="ghost"
                       size="sm"
-                      className="hover:text-alarm"
+                      className="hover:text-red-text"
                     >
                       remove
                     </Button>
@@ -98,7 +98,7 @@ export default async function TeamPage() {
       {invites.length > 0 ? (
         <section className="flex flex-col gap-3">
           <SectionHeader label={`pending invites · ${invites.length}`} />
-          <Panel className="divide-y divide-hairline-soft">
+          <Panel className="divide-y divide-border">
             {invites.map(({ invite, createdByName }) => {
               const expired = invite.expiresAt.getTime() < Date.now();
               return (
@@ -106,7 +106,7 @@ export default async function TeamPage() {
                   key={invite.id}
                   className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3"
                 >
-                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ash">
+                  <span className="min-w-0 flex-1 truncate font-mono type-caption-sm text-muted-foreground">
                     {invite.email ?? "open invite — any email"}
                   </span>
                   <MonoLabel tone="slate">{invite.role}</MonoLabel>
@@ -116,7 +116,7 @@ export default async function TeamPage() {
                       : `expires ${invite.expiresAt.toLocaleDateString()}`}
                   </MonoLabel>
                   {createdByName ? (
-                    <span className="hidden font-mono text-[10px] text-slate sm:inline">
+                    <span className="hidden font-mono type-caption-sm text-subtle-foreground sm:inline">
                       by {createdByName}
                     </span>
                   ) : null}
@@ -124,9 +124,9 @@ export default async function TeamPage() {
                     <input type="hidden" name="id" value={invite.id} />
                     <Button
                       type="submit"
-                      variant="bracket"
+                      variant="ghost"
                       size="sm"
-                      className="hover:text-alarm"
+                      className="hover:text-red-text"
                     >
                       revoke
                     </Button>
@@ -135,7 +135,7 @@ export default async function TeamPage() {
               );
             })}
           </Panel>
-          <p className="text-[11px] leading-relaxed text-slate">
+          <p className="type-caption-sm text-subtle-foreground">
             Invite links are shown once, when created, and only their hash is stored —
             so a link cannot be recovered later. Revoke and re-issue if one is lost.
           </p>

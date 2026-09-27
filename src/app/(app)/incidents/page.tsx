@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { EmptyState, Panel, SectionHeader } from "@/components/ui/frame";
+import { LinkTabs } from "@/components/link-tabs";
+import { EmptyState, Panel } from "@/components/ui/frame";
 import { MonoLabel } from "@/components/ui/mono";
 import { formatDuration } from "@/lib/metrics/uptime";
 import { KIND_LABEL } from "@/lib/probe";
@@ -30,23 +31,11 @@ export default async function IncidentsPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionHeader label="incidents">
-        <div className="flex items-center gap-1">
-          {FILTERS.map((x) => (
-            <Link
-              key={x.key}
-              href={`/incidents?f=${x.key}`}
-              className={
-                x.key === filter
-                  ? "border-b border-amp px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-bone"
-                  : "border-b border-transparent px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-slate hover:text-ash"
-              }
-            >
-              {x.label}
-            </Link>
-          ))}
-        </div>
-      </SectionHeader>
+      <LinkTabs
+        label="incidents"
+        value={filter}
+        items={FILTERS.map((x) => ({ value: x.key, label: x.label, href: `/incidents?f=${x.key}` }))}
+      >
 
       {rows.length === 0 ? (
         <EmptyState
@@ -58,7 +47,7 @@ export default async function IncidentsPage({
           }
         />
       ) : (
-        <Panel className="divide-y divide-hairline-soft">
+        <Panel className="divide-y divide-border">
           {rows.map(({ incident, monitorName, monitorKind }) => {
             const duration = incident.resolvedAt
               ? incident.resolvedAt.getTime() - incident.startedAt.getTime()
@@ -68,20 +57,20 @@ export default async function IncidentsPage({
               <Link
                 key={incident.id}
                 href={`/incidents/${incident.id}`}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 transition-colors hover:bg-panel-2"
+                className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 transition-colors hover:bg-muted"
               >
                 <span
                   className={
                     incident.status === "resolved"
-                      ? "size-2 shrink-0 bg-live"
+                      ? "size-2 shrink-0 bg-green-mark"
                       : incident.status === "acknowledged"
-                        ? "size-2 shrink-0 bg-amp"
-                        : "size-2 shrink-0 anim-pulse bg-alarm"
+                        ? "size-2 shrink-0 bg-primary"
+                        : "size-2 shrink-0 anim-pulse bg-red-mark"
                   }
                   aria-hidden
                 />
 
-                <span className="w-32 shrink-0 tnum font-mono text-[11px] text-slate">
+                <span className="w-32 shrink-0 tabular-nums font-mono type-caption-sm text-subtle-foreground">
                   {incident.startedAt.toLocaleString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -90,7 +79,7 @@ export default async function IncidentsPage({
                   })}
                 </span>
 
-                <span className="w-44 shrink-0 truncate text-[13px] text-bone">
+                <span className="w-44 shrink-0 truncate type-caption text-foreground">
                   {monitorName}
                 </span>
 
@@ -98,7 +87,7 @@ export default async function IncidentsPage({
                   {KIND_LABEL[monitorKind]}
                 </MonoLabel>
 
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ash">
+                <span className="min-w-0 flex-1 truncate font-mono type-caption-sm text-muted-foreground">
                   {incident.cause ?? "Check failed"}
                 </span>
 
@@ -116,8 +105,8 @@ export default async function IncidentsPage({
                 <span
                   className={
                     incident.resolvedAt
-                      ? "w-20 shrink-0 text-right tnum font-mono text-[11px] text-ash"
-                      : "w-20 shrink-0 text-right tnum font-mono text-[11px] text-alarm"
+                      ? "w-20 shrink-0 text-right tabular-nums font-mono type-caption-sm text-muted-foreground"
+                      : "w-20 shrink-0 text-right tabular-nums font-mono type-caption-sm text-red-text"
                   }
                 >
                   {formatDuration(duration)}
@@ -127,6 +116,7 @@ export default async function IncidentsPage({
           })}
         </Panel>
       )}
+      </LinkTabs>
     </div>
   );
 }

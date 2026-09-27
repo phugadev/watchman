@@ -18,7 +18,7 @@ const initial: StatusPageActionState = {};
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="solid" size="sm" disabled={pending}>
+    <Button type="submit" size="sm" disabled={pending}>
       {pending ? "Saving…" : label}
     </Button>
   );
@@ -44,7 +44,7 @@ export function StatusPageForm({
     return (
       <Button
         type="button"
-        variant={editing ? "bracket" : "solid"}
+        variant={editing ? "ghost" : "default"}
         size="sm"
         onClick={() => setOpen(true)}
       >
@@ -58,7 +58,7 @@ export function StatusPageForm({
       {editing ? <input type="hidden" name="id" value={page!.id} /> : null}
       <FormError>{state.error}</FormError>
       {state.ok ? (
-        <p className="border border-live/40 bg-live/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-live">
+        <p className="rounded-control-md border border-green-border bg-green-fill px-3 py-2 signal type-label-sm text-green-text">
           Saved
         </p>
       ) : null}
@@ -102,12 +102,12 @@ export function StatusPageForm({
 
       <div className="flex flex-col gap-3">
         <MonoLabel>monitors to publish</MonoLabel>
-        <p className="text-[11px] leading-relaxed text-slate">
+        <p className="type-caption-sm text-subtle-foreground">
           Only what you pick is public. Internal monitors — a database port, a
           staging box — are best left off.
         </p>
         {monitors.length === 0 ? (
-          <p className="text-[12px] text-warn">Create a monitor first.</p>
+          <p className="type-caption-sm text-amber-text">Create a monitor first.</p>
         ) : (
           <div className="flex max-h-56 flex-col gap-2 overflow-y-auto">
             {monitors.map((m) => (
@@ -117,9 +117,9 @@ export function StatusPageForm({
                   name="monitorIds"
                   value={m.id}
                   defaultChecked={selectedMonitorIds.includes(m.id)}
-                  className="size-3.5 shrink-0 appearance-none border border-hairline bg-void checked:border-amp checked:bg-amp"
+                  className="size-3.5 shrink-0 appearance-none rounded-xs border border-gray-hairline-strong bg-background checked:border-foreground checked:bg-primary"
                 />
-                <span className="truncate text-[13px] text-bone">{m.name}</span>
+                <span className="truncate type-caption text-foreground">{m.name}</span>
                 <MonoLabel tone="slate">{m.kind}</MonoLabel>
               </label>
             ))}
@@ -153,7 +153,7 @@ export function StatusPageForm({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate hover:text-ash"
+          className="signal type-label-sm text-subtle-foreground hover:text-muted-foreground"
         >
           Close
         </button>
@@ -167,7 +167,7 @@ export function StatusPageForm({
   return (
     <Panel inset className="flex w-full flex-col gap-5">
       <SectionHeader label="new status page">
-        <Button type="button" variant="bracket" size="sm" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           cancel
         </Button>
       </SectionHeader>

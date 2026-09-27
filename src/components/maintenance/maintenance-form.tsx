@@ -16,7 +16,7 @@ const initial: MaintenanceActionState = {};
 function Submit() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="solid" size="sm" disabled={pending}>
+    <Button type="submit" size="sm" disabled={pending}>
       {pending ? "Scheduling…" : "Schedule window"}
     </Button>
   );
@@ -38,7 +38,7 @@ export function MaintenanceForm({
 
   if (!open) {
     return (
-      <Button type="button" variant="solid" size="sm" onClick={() => setOpen(true)}>
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
         schedule window
       </Button>
     );
@@ -53,7 +53,7 @@ export function MaintenanceForm({
   return (
     <Panel inset className="flex w-full flex-col gap-5">
       <SectionHeader label="schedule maintenance">
-        <Button type="button" variant="bracket" size="sm" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           cancel
         </Button>
       </SectionHeader>
@@ -62,7 +62,7 @@ export function MaintenanceForm({
       <form action={action} className="flex flex-col gap-5">
         <FormError>{state.error}</FormError>
         {state.ok ? (
-          <p className="border border-live/40 bg-live/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-live">
+          <p className="rounded-control-md border border-green-border bg-green-fill px-3 py-2 signal type-label-sm text-green-text">
             Window scheduled
           </p>
         ) : null}
@@ -77,7 +77,7 @@ export function MaintenanceForm({
           />
         </Field>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field label="Starts" htmlFor="mw-start" required hint="Your local time.">
             <Input
               id="mw-start"
@@ -111,7 +111,7 @@ export function MaintenanceForm({
         <div className="flex flex-col gap-3">
           <MonoLabel>affected monitors</MonoLabel>
           {monitors.length === 0 ? (
-            <p className="text-[12px] text-warn">Create a monitor first.</p>
+            <p className="type-caption-sm text-amber-text">Create a monitor first.</p>
           ) : (
             <div className="flex max-h-56 flex-col gap-2 overflow-y-auto">
               {monitors.map((m) => (
@@ -120,9 +120,9 @@ export function MaintenanceForm({
                     type="checkbox"
                     name="monitorIds"
                     value={m.id}
-                    className="size-3.5 shrink-0 appearance-none border border-hairline bg-void checked:border-amp checked:bg-amp"
+                    className="size-3.5 shrink-0 appearance-none rounded-xs border border-gray-hairline-strong bg-background checked:border-foreground checked:bg-primary"
                   />
-                  <span className="truncate text-[13px] text-bone">{m.name}</span>
+                  <span className="truncate type-caption text-foreground">{m.name}</span>
                   <MonoLabel tone="slate">{m.kind}</MonoLabel>
                 </label>
               ))}

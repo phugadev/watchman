@@ -23,7 +23,7 @@ function Submit({ children, pendingLabel }: { children: string; pendingLabel: st
   return (
     <Button
       type="submit"
-      variant="solid"
+     
       disabled={pending}
       className="relative w-full overflow-hidden"
     >

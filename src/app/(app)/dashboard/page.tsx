@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
 import { CropFrame, EmptyState, Panel, Rule, SectionHeader } from "@/components/ui/frame";
 import { GradeBadge } from "@/components/ui/grade-badge";
 import { MonoLabel, Readout } from "@/components/ui/mono";
-import { StatusPill } from "@/components/ui/status";
+import { StatusPill } from "@/components/monitor-status";
 import { MonitorCard } from "@/components/monitors/monitor-card";
 import { GRADE_CAPTION } from "@/lib/metrics/grade";
 import { formatDuration, formatMs, formatUptime } from "@/lib/metrics/uptime";
@@ -37,7 +37,7 @@ export default function DashboardPage() {
           title="nothing is being watched yet"
           hint="Add your first monitor and Watchman will start probing it immediately. HTTP endpoints, TCP ports, TLS certificates, and cron heartbeats are all supported."
           action={
-            <ButtonLink href="/monitors/new" variant="solid">
+            <ButtonLink href="/monitors/new">
               Create the first monitor
             </ButtonLink>
           }
@@ -94,7 +94,7 @@ export default function DashboardPage() {
           <div className="flex flex-col items-center gap-2.5">
             <GradeBadge grade={fleet.overallGrade} size="lg" />
             <MonoLabel tone="slate">{GRADE_CAPTION[fleet.overallGrade]}</MonoLabel>
-            <span className="tnum font-mono text-[10px] text-slate">
+            <span className="tabular-nums font-mono type-caption-sm text-subtle-foreground">
               {fleet.overallScore} / 100
             </span>
           </div>
@@ -113,9 +113,9 @@ export default function DashboardPage() {
             <StatusPill status="pending" label={`${fleet.pending} pending`} beacon={false} />
           ) : null}
 
-          <span className="ml-auto flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.16em] text-slate">
+          <span className="ml-auto flex items-center gap-2 signal type-label-xs text-subtle-foreground">
             <span
-              className={scheduler.running ? "size-1.5 anim-pulse bg-live" : "size-1.5 bg-alarm"}
+              className={scheduler.running ? "size-1.5 anim-pulse bg-green-mark" : "size-1.5 bg-red-mark"}
               aria-hidden
             />
             {scheduler.running
@@ -129,14 +129,14 @@ export default function DashboardPage() {
            Stated up front, because an operator seeing a quiet dashboard needs to
            know whether it is quiet or muted. */}
       {activeMaintenance > 0 ? (
-        <Panel className="flex flex-wrap items-center gap-x-4 gap-y-2 border-violet/30 bg-violet/5 px-4 py-3">
+        <Panel className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border-purple-border bg-purple-fill px-4 py-3">
           <MonoLabel tone="amp">maintenance active</MonoLabel>
-          <p className="min-w-0 flex-1 text-[12px] text-ash">
+          <p className="min-w-0 flex-1 type-caption-sm text-muted-foreground">
             {activeMaintenance === 1
               ? "A maintenance window is in effect — alerts are being withheld for the monitors it covers."
               : `${activeMaintenance} maintenance windows are in effect — alerts are being withheld for the monitors they cover.`}
           </p>
-          <ButtonLink href="/maintenance" variant="bracket" size="sm">
+          <ButtonLink href="/maintenance" variant="ghost" size="sm">
             review
           </ButtonLink>
         </Panel>
@@ -148,31 +148,31 @@ export default function DashboardPage() {
           <SectionHeader label="open incidents">
             <Link
               href="/incidents"
-              className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate hover:text-amp"
+              className="signal type-label-xs text-subtle-foreground hover:text-foreground"
             >
               all →
             </Link>
           </SectionHeader>
 
-          <Panel className="divide-y divide-hairline-soft">
+          <Panel className="divide-y divide-border">
             {openIncidents.map(({ incident, monitorName }) => (
               <Link
                 key={incident.id}
                 href={`/incidents/${incident.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-panel-2"
+                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted"
               >
                 <span
                   className={
                     incident.status === "acknowledged"
-                      ? "size-2 shrink-0 bg-amp"
-                      : "size-2 shrink-0 anim-pulse bg-alarm"
+                      ? "size-2 shrink-0 bg-primary"
+                      : "size-2 shrink-0 anim-pulse bg-red-mark"
                   }
                   aria-hidden
                 />
-                <span className="w-40 shrink-0 truncate text-[13px] text-bone">
+                <span className="w-40 shrink-0 truncate type-caption text-foreground">
                   {monitorName}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ash">
+                <span className="min-w-0 flex-1 truncate font-mono type-caption-sm text-muted-foreground">
                   {incident.cause ?? "Check failed"}
                 </span>
                 {incident.flapping ? (
@@ -185,7 +185,7 @@ export default function DashboardPage() {
                     acked
                   </MonoLabel>
                 ) : null}
-                <span className="shrink-0 tnum font-mono text-[11px] text-alarm">
+                <span className="shrink-0 tabular-nums font-mono type-caption-sm text-red-text">
                   {formatDuration(Date.now() - incident.startedAt.getTime())}
                 </span>
               </Link>
@@ -197,12 +197,12 @@ export default function DashboardPage() {
       {/* ---- monitors ---------------------------------------------------- */}
       <section className="flex flex-col gap-3">
         <SectionHeader label={`monitors · ${health.length}`}>
-          <ButtonLink href="/monitors/new" variant="bracket" size="sm">
+          <ButtonLink href="/monitors/new" variant="ghost" size="sm">
             new monitor
           </ButtonLink>
         </SectionHeader>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((h) => (
             <MonitorCard key={h.monitor.id} health={h} />
           ))}
@@ -214,14 +214,14 @@ export default function DashboardPage() {
            the single most common way a self-hosted monitoring setup silently
            fails to do its job. Worth saying out loud. */}
       {unrouted.length > 0 ? (
-        <Panel className="flex flex-wrap items-center gap-x-4 gap-y-2 border-warn/30 bg-warn/5 px-4 py-3">
+        <Panel className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border-amber-border bg-amber-fill px-4 py-3">
           <MonoLabel tone="amp">no alert route</MonoLabel>
-          <p className="min-w-0 flex-1 text-[12px] text-ash">
+          <p className="min-w-0 flex-1 type-caption-sm text-muted-foreground">
             {unrouted.length === 1
               ? `"${unrouted[0]!.name}" has no alert channel attached — if it goes down, nobody is told.`
               : `${unrouted.length} monitors have no alert channel attached — if they go down, nobody is told.`}
           </p>
-          <ButtonLink href="/channels" variant="bracket" size="sm">
+          <ButtonLink href="/channels" variant="ghost" size="sm">
             set up alerts
           </ButtonLink>
         </Panel>

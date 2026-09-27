@@ -59,15 +59,15 @@ export default async function AppLayout({
         isAdmin={user.role === "admin"}
       />
 
-      <header className="sticky top-0 z-40 border-b border-hairline-soft bg-void/90 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[110rem] items-center gap-6 px-5">
           <Link
             href="/dashboard"
             className="flex shrink-0 items-center gap-2.5"
             aria-label="Watchman home"
           >
-            <Mark size={20} className="text-bone" />
-            <span className="hidden font-sans text-[14px] font-semibold tracking-tight text-bone sm:inline">
+            <Mark size={20} className="text-foreground" />
+            <span className="hidden font-sans type-body font-semibold text-foreground sm:inline">
               Watchman
             </span>
           </Link>
@@ -77,14 +77,14 @@ export default async function AppLayout({
           <div className="flex shrink-0 items-center gap-4">
             {/* Discoverability for the palette — a shortcut nobody knows about is
                 a shortcut nobody uses. */}
-            <span className="hidden items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-slate lg:flex">
-              <kbd className="border border-hairline-soft px-1.5 py-0.5 text-[9px]">⌘K</kbd>
+            <span className="hidden items-center gap-1.5 signal type-label-xs text-subtle-foreground lg:flex">
+              <kbd className="rounded-mark border border-border px-1.5 py-0.5 type-caption-sm">⌘K</kbd>
               search
             </span>
 
             <Link
               href="/settings"
-              className="hidden font-mono text-[10px] uppercase tracking-[0.14em] text-slate transition-colors hover:text-ash sm:inline"
+              className="hidden signal type-label-xs text-subtle-foreground transition-colors hover:text-muted-foreground sm:inline"
             >
               {user.name.split(" ")[0]}
             </Link>
@@ -92,7 +92,7 @@ export default async function AppLayout({
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate transition-colors hover:text-alarm"
+                className="signal type-label-xs text-subtle-foreground transition-colors hover:text-red-text"
               >
                 Sign out
               </button>
@@ -104,17 +104,17 @@ export default async function AppLayout({
       <div className="mx-auto flex w-full max-w-[110rem] flex-1 gap-0 px-0">
         <main className="min-w-0 flex-1 px-5 py-8">{children}</main>
 
-        <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-[19rem] shrink-0 border-l border-hairline-soft xl:block">
+        <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-[19rem] shrink-0 border-l border-border xl:block">
           <LiveTape initial={recentEvents(30)} className="h-full" />
         </aside>
       </div>
 
-      <footer className="border-t border-hairline-soft px-5 py-4">
+      <footer className="border-t border-border px-5 py-4">
         <div className="mx-auto flex max-w-[110rem] items-center justify-between gap-4">
           <MonoLabel tone="slate">watchman · self-hosted</MonoLabel>
           <a
             href="/api/health"
-            className="font-mono text-[9px] uppercase tracking-[0.16em] text-slate transition-colors hover:text-ash"
+            className="signal type-label-xs text-subtle-foreground transition-colors hover:text-muted-foreground"
           >
             health
           </a>

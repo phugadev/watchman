@@ -33,7 +33,7 @@ export default async function EditMonitorPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <SectionHeader label="edit monitor" />
-        <h1 className="text-2xl font-semibold tracking-tight text-bone">
+        <h1 className="type-title font-semibold text-foreground">
           {monitor.name}
         </h1>
       </div>

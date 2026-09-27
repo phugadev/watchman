@@ -1,10 +1,27 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { Stat, StatLabel, StatValue } from "./stat";
 
-/**
- * MonoLabel — the single most-used element in Watchman. Uppercase mono at 10–11px
- * with wide tracking. Labels never compete with values for attention.
+/*
+ * Watchman's labelling vocabulary, on Minima's registers: labels are the
+ * signal voice (mono, uppercase, tracked — scanned, never read) and values are
+ * the figure voice (mono, tabular — compared down a column).
+ *
+ * The tone names are Watchman's and stay so call sites read the same; each one
+ * resolves to a Minima role. `amp` was the acid-yellow attention colour and is
+ * now emphasis — the foreground — because Minima keeps hue for state.
  */
+const TONE = {
+  ash: "text-muted-foreground",
+  slate: "text-subtle-foreground",
+  bone: "text-foreground",
+  amp: "text-foreground",
+  live: "text-green-text",
+  alarm: "text-red-text",
+  warn: "text-amber-text",
+} as const;
+
+/** The single most-used element in Watchman. Labels never compete with values. */
 export function MonoLabel({
   children,
   className,
@@ -14,30 +31,13 @@ export function MonoLabel({
   className?: string;
   tone?: "ash" | "slate" | "bone" | "amp" | "live" | "alarm";
 }) {
-  const tones = {
-    ash: "text-ash",
-    slate: "text-slate",
-    bone: "text-bone",
-    amp: "text-amp",
-    live: "text-live",
-    alarm: "text-alarm",
-  } as const;
-  return (
-    <span
-      className={cn(
-        "font-mono text-[10px] uppercase leading-none tracking-[0.18em]",
-        tones[tone],
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
+  return <span className={cn("signal type-label-xs", TONE[tone], className)}>{children}</span>;
 }
 
 /**
- * Readout — a labelled metric. The label whispers in mono caps, the value shouts
- * in tabular figures. `hint` carries units or comparison.
+ * A labelled figure: the dashboard's unit of information. It is Minima's Stat
+ * — label, value, and an optional line under it — without the card, because
+ * a readout here sits inside an instrument panel that is already the card.
  */
 export function Readout({
   label,
@@ -54,78 +54,40 @@ export function Readout({
   className?: string;
   size?: "sm" | "md" | "lg";
 }) {
-  const tones = {
-    bone: "text-bone",
-    amp: "text-amp",
-    live: "text-live",
-    alarm: "text-alarm",
-    warn: "text-warn",
-    slate: "text-slate",
-  } as const;
   const sizes = {
-    sm: "text-lg",
-    md: "text-2xl",
-    lg: "text-4xl sm:text-5xl",
+    sm: "type-heading",
+    md: "type-title",
+    lg: "type-title sm:type-display",
   } as const;
-
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <MonoLabel>{label}</MonoLabel>
-      <div
-        className={cn(
-          "tnum font-semibold leading-none tracking-tight",
-          sizes[size],
-          tones[tone],
-        )}
-      >
-        {value}
-      </div>
-      {hint ? (
-        <div className="tnum font-mono text-[10px] uppercase tracking-[0.14em] text-slate">
-          {hint}
-        </div>
-      ) : null}
-    </div>
+    <Stat className={cn("gap-inset rounded-none border-0 bg-transparent p-0", className)}>
+      <StatLabel className="signal type-label-xs text-muted-foreground">{label}</StatLabel>
+      <StatValue className={cn("font-semibold", sizes[size], TONE[tone])}>{value}</StatValue>
+      {hint ? <p className="signal tabular-nums type-label-xs text-subtle-foreground">{hint}</p> : null}
+    </Stat>
   );
 }
 
-/**
- * KeyValue — a dotted leader row, like a technical spec sheet. The dotted fill
- * between key and value is what makes long lists scannable.
- */
-export function KeyValue({
-  k,
-  children,
-  mono = true,
-}: {
-  k: string;
-  children: ReactNode;
-  mono?: boolean;
-}) {
+/** A key and its value on a dotted leader, like a spec sheet. */
+export function KeyValue({ k, children, mono = true }: { k: string; children: ReactNode; mono?: boolean }) {
   return (
     <div className="flex items-baseline gap-3 py-1.5">
       <MonoLabel className="shrink-0">{k}</MonoLabel>
-      <span
-        aria-hidden
-        className="min-w-4 flex-1 translate-y-[-3px] border-b border-dotted border-hairline"
-      />
-      <span
-        className={cn(
-          "shrink-0 text-right text-[13px] text-bone",
-          mono && "tnum font-mono",
-        )}
-      >
+      <span aria-hidden className="min-w-4 flex-1 -translate-y-0.5 border-b border-dotted border-gray-hairline-strong" />
+      {/* The value may be a URL, a file path or a list of events: it has to be
+          allowed to shrink and wrap, or one long value widens the whole page. */}
+      <span className={cn("min-w-0 text-right type-caption text-foreground [overflow-wrap:anywhere]", mono && "figure")}>
         {children}
       </span>
     </div>
   );
 }
 
-/** A `> ` terminal prompt prefix. */
+/** A shell prompt: the instrument speaking. */
 export function Prompt({ children }: { children: ReactNode }) {
   return (
-    <span className="font-mono text-ash">
-      <span className="text-slate" aria-hidden>
+    <span className="font-mono text-muted-foreground">
+      <span className="text-subtle-foreground" aria-hidden>
         &gt;{" "}
       </span>
       {children}
@@ -133,18 +95,12 @@ export function Prompt({ children }: { children: ReactNode }) {
   );
 }
 
-/** Inline monospace code chip. */
-export function Code({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+/** Inline code. */
+export function Code({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <code
       className={cn(
-        "border border-hairline-soft bg-panel-2 px-1.5 py-0.5 font-mono text-[12px] text-bone",
+        "rounded-mark border border-border bg-muted px-1.5 py-0.5 font-mono type-caption-sm text-foreground",
         className,
       )}
     >

@@ -17,7 +17,7 @@ export function ChangePasswordForm() {
     <form action={action} className="flex max-w-sm flex-col gap-5">
       <FormError>{state.error}</FormError>
       {state.ok ? (
-        <p className="border border-live/40 bg-live/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-live">
+        <p className="rounded-control-md border border-green-border bg-green-fill px-3 py-2 signal type-label-sm text-green-text">
           Password changed — other sessions signed out
         </p>
       ) : null}
@@ -48,7 +48,7 @@ export function ChangePasswordForm() {
         />
       </Field>
 
-      <Button type="submit" variant="ghost" size="sm" disabled={pending}>
+      <Button type="submit" variant="outline" size="sm" disabled={pending}>
         {pending ? "Saving…" : "Change password"}
       </Button>
     </form>

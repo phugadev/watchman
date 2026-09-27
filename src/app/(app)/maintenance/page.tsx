@@ -17,9 +17,9 @@ export const metadata: Metadata = { title: "Maintenance" };
 export const dynamic = "force-dynamic";
 
 const PHASE_TONE: Record<MaintenancePhase, string> = {
-  active: "bg-violet",
-  scheduled: "bg-amp",
-  finished: "bg-slate",
+  active: "bg-purple-mark",
+  scheduled: "bg-primary",
+  finished: "bg-gray-solid",
 };
 
 export default async function MaintenancePage() {
@@ -47,7 +47,7 @@ export default async function MaintenancePage() {
         )}
       </SectionHeader>
 
-      <p className="max-w-2xl text-[13px] leading-relaxed text-ash">
+      <p className="max-w-2xl type-caption text-muted-foreground">
         A window silences alerts for a planned change without losing the data.
         Suppressing keeps probing and recording, so the incident timeline afterwards
         still shows what happened — nobody is just paged for it. Pausing stops probing
@@ -60,7 +60,7 @@ export default async function MaintenancePage() {
           hint="Schedule one before a deploy or a database migration, and Watchman will stay quiet for the duration instead of paging whoever is on call."
         />
       ) : (
-        <Panel className="divide-y divide-hairline-soft">
+        <Panel className="divide-y divide-border">
           {windows.map(({ window, monitors: affected, phase }) => (
             <div
               key={window.id}
@@ -71,7 +71,7 @@ export default async function MaintenancePage() {
                   className={`size-2 shrink-0 ${PHASE_TONE[phase]} ${phase === "active" ? "anim-pulse" : ""}`}
                   aria-hidden
                 />
-                <span className="min-w-0 flex-1 truncate text-[14px] text-bone">
+                <span className="min-w-0 flex-1 truncate type-body text-foreground">
                   {window.title}
                 </span>
 
@@ -88,7 +88,7 @@ export default async function MaintenancePage() {
                     {phase === "active" ? (
                       <form action={endMaintenanceNowAction}>
                         <input type="hidden" name="id" value={window.id} />
-                        <Button type="submit" variant="bracket" size="sm">
+                        <Button type="submit" variant="ghost" size="sm">
                           end now
                         </Button>
                       </form>
@@ -97,9 +97,9 @@ export default async function MaintenancePage() {
                       <input type="hidden" name="id" value={window.id} />
                       <Button
                         type="submit"
-                        variant="bracket"
+                        variant="ghost"
                         size="sm"
-                        className="hover:text-alarm"
+                        className="hover:text-red-text"
                       >
                         delete
                       </Button>
@@ -108,7 +108,7 @@ export default async function MaintenancePage() {
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 tnum font-mono text-[10px] uppercase tracking-[0.14em] text-slate">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums signal type-label-xs text-subtle-foreground">
                 <span>
                   {window.startsAt.toLocaleString(undefined, {
                     month: "short",
@@ -140,7 +140,7 @@ export default async function MaintenancePage() {
                     <Link
                       key={m.id}
                       href={`/monitors/${m.id}`}
-                      className="font-mono text-[11px] text-ash hover:text-amp hover:underline"
+                      className="font-mono type-caption-sm text-muted-foreground hover:text-foreground hover:underline"
                     >
                       {m.name}
                     </Link>
@@ -149,7 +149,7 @@ export default async function MaintenancePage() {
               </div>
 
               {window.notes ? (
-                <p className="text-[12px] leading-relaxed text-slate">{window.notes}</p>
+                <p className="type-caption-sm text-subtle-foreground">{window.notes}</p>
               ) : null}
             </div>
           ))}

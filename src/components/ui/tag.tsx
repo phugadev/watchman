@@ -20,19 +20,20 @@ export function Tag({
   count?: number;
   className?: string;
 }) {
+  /* A Minima chip. Active is the inverted neutral — emphasis, not a hue,
+     because a hue on this surface means a state. */
   const base = cn(
-    "inline-flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.12em] transition-colors",
+    "signal inline-flex items-center gap-1.5 rounded-chip border px-2 py-0.5 type-label-xs transition-colors duration-quick",
     active
-      ? "border-amp bg-amp/10 text-amp"
-      : "border-hairline-soft text-slate hover:border-hairline hover:text-ash",
+      ? "border-transparent bg-primary text-primary-foreground"
+      : "border-border text-subtle-foreground hover:border-gray-hairline-strong hover:text-muted-foreground",
     className,
   );
-
   const body = (
     <>
       {children}
       {count !== undefined ? (
-        <span className={cn("tnum", active ? "text-amp/70" : "text-slate/70")}>
+        <span className={cn("tabular-nums", active ? "opacity-70" : "text-subtle-foreground")}>
           {count}
         </span>
       ) : null}

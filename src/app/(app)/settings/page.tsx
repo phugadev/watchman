@@ -33,9 +33,9 @@ export default async function SettingsPage() {
           </KeyValue>
         </div>
         {user.role === "admin" ? (
-          <p className="text-[12px] text-ash">
+          <p className="type-caption-sm text-muted-foreground">
             You are an administrator.{" "}
-            <Link href="/team" className="text-amp hover:underline">
+            <Link href="/team" className="text-foreground hover:underline">
               Manage the team
             </Link>
             .
@@ -54,7 +54,7 @@ export default async function SettingsPage() {
         <Rule />
         <div className="flex flex-col">
           <KeyValue k="state">
-            <span className={scheduler.running ? "text-live" : "text-alarm"}>
+            <span className={scheduler.running ? "text-green-text" : "text-red-text"}>
               {scheduler.running ? "running" : "stopped"}
             </span>
           </KeyValue>
@@ -75,7 +75,7 @@ export default async function SettingsPage() {
       <Panel inset className="flex flex-col gap-4">
         <SectionHeader label="instance configuration" />
         <Rule />
-        <p className="text-[12px] leading-relaxed text-ash">
+        <p className="type-caption-sm text-muted-foreground">
           These come from the environment, so a deployment is fully described by its
           compose file rather than by settings someone clicked in. Change them there
           and restart.
@@ -93,7 +93,7 @@ export default async function SettingsPage() {
         <div className="flex flex-col gap-2">
           <MonoLabel tone="slate">health endpoint</MonoLabel>
           <Code>GET {env.publicUrl}/api/health</Code>
-          <p className="text-[11px] leading-relaxed text-slate">
+          <p className="type-caption-sm text-subtle-foreground">
             Returns 503 when the database is unreachable or the probe loop has
             stalled, so an orchestrator restarts a container that is serving pages
             but no longer monitoring anything.

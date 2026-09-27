@@ -123,7 +123,7 @@ export default async function ChannelsPage() {
           hint="Without a channel, Watchman records outages but tells nobody. Email reaches people who are not in your chat tool; Slack, Discord, and Telegram are the fastest path to a phone buzzing; a webhook makes every other integration someone else's problem."
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {rows.map(({ channel, monitorCount }) => (
             <Panel key={channel.id} inset className="flex flex-col gap-4">
               <div className="flex items-start justify-between gap-3">
@@ -131,11 +131,11 @@ export default async function ChannelsPage() {
                   <div className="flex items-center gap-2.5">
                     <span
                       className={
-                        channel.enabled ? "size-2 shrink-0 bg-live" : "size-2 shrink-0 bg-slate"
+                        channel.enabled ? "size-2 shrink-0 bg-green-mark" : "size-2 shrink-0 bg-gray-solid"
                       }
                       aria-hidden
                     />
-                    <span className="truncate text-[14px] font-medium text-bone">
+                    <span className="truncate type-body font-medium text-foreground">
                       {channel.name}
                     </span>
                   </div>
@@ -149,7 +149,7 @@ export default async function ChannelsPage() {
                   <div className="flex shrink-0 items-center gap-2">
                     <form action={toggleChannelAction}>
                       <input type="hidden" name="id" value={channel.id} />
-                      <Button type="submit" variant="bracket" size="sm">
+                      <Button type="submit" variant="ghost" size="sm">
                         {channel.enabled ? "disable" : "enable"}
                       </Button>
                     </form>
@@ -157,9 +157,9 @@ export default async function ChannelsPage() {
                       <input type="hidden" name="id" value={channel.id} />
                       <Button
                         type="submit"
-                        variant="bracket"
+                        variant="ghost"
                         size="sm"
-                        className="hover:text-alarm"
+                        className="hover:text-red-text"
                       >
                         delete
                       </Button>
@@ -182,7 +182,7 @@ export default async function ChannelsPage() {
               </div>
 
               {channel.lastError ? (
-                <p className="break-words border-l-2 border-alarm/40 pl-2 font-mono text-[10px] text-alarm">
+                <p className="break-words border-l-2 border-red-border pl-2 font-mono type-caption-sm text-red-text">
                   {channel.lastError}
                 </p>
               ) : null}
@@ -212,7 +212,7 @@ export default async function ChannelsPage() {
         </SectionHeader>
 
         {rows.length === 0 ? (
-          <p className="text-[13px] leading-relaxed text-ash">
+          <p className="type-caption text-muted-foreground">
             Escalation needs somewhere to escalate to. Add a channel first.
           </p>
         ) : policies.length === 0 ? (
@@ -226,7 +226,7 @@ export default async function ChannelsPage() {
               <Panel key={policy.id} inset className="flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <span className="truncate text-[14px] font-medium text-bone">
+                    <span className="truncate type-body font-medium text-foreground">
                       {policy.name}
                     </span>
                     <MonoLabel tone="slate">
@@ -243,9 +243,9 @@ export default async function ChannelsPage() {
                       <input type="hidden" name="id" value={policy.id} />
                       <Button
                         type="submit"
-                        variant="bracket"
+                        variant="ghost"
                         size="sm"
-                        className="hover:text-alarm"
+                        className="hover:text-red-text"
                       >
                         delete
                       </Button>
@@ -256,7 +256,7 @@ export default async function ChannelsPage() {
                 <Rule />
 
                 {steps.length === 0 ? (
-                  <p className="text-[12px] leading-relaxed text-warn">
+                  <p className="type-caption-sm text-amber-text">
                     No steps yet — this policy will not notify anyone.
                   </p>
                 ) : (
@@ -264,17 +264,17 @@ export default async function ChannelsPage() {
                     {steps.map(({ step, channelName, channelKind, channelEnabled }) => (
                       <li
                         key={step.id}
-                        className="flex items-center gap-3 border-b border-hairline-soft py-2 last:border-0"
+                        className="flex items-center gap-3 border-b border-border py-2 last:border-0"
                       >
-                        <span className="w-6 shrink-0 font-mono text-[11px] text-slate tnum">
+                        <span className="w-6 shrink-0 font-mono type-caption-sm text-subtle-foreground tabular-nums">
                           {step.position}
                         </span>
-                        <span className="w-24 shrink-0 font-mono text-[11px] text-amp tnum">
+                        <span className="w-24 shrink-0 font-mono type-caption-sm text-foreground tabular-nums">
                           {step.afterSec === 0
                             ? "immediately"
                             : `+${formatDuration(step.afterSec * 1000)}`}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-[13px] text-bone">
+                        <span className="min-w-0 flex-1 truncate type-caption text-foreground">
                           {channelName}
                         </span>
                         <MonoLabel tone="slate">{channelKind}</MonoLabel>
@@ -288,9 +288,9 @@ export default async function ChannelsPage() {
                             <input type="hidden" name="id" value={step.id} />
                             <Button
                               type="submit"
-                              variant="bracket"
+                              variant="ghost"
                               size="sm"
-                              className="hover:text-alarm"
+                              className="hover:text-red-text"
                             >
                               remove
                             </Button>
@@ -328,7 +328,7 @@ export default async function ChannelsPage() {
       <section className="flex flex-col gap-3">
         <SectionHeader label="webhook contract" />
         <Panel inset className="flex flex-col gap-4">
-          <p className="max-w-2xl text-[13px] leading-relaxed text-ash">
+          <p className="max-w-2xl type-caption text-muted-foreground">
             Watchman sends a <Code>POST</Code> with a JSON body and these headers.
             Verify the signature before trusting the payload: it is an HMAC-SHA256
             over <Code>{"`${timestamp}.${body}`"}</Code>, hex encoded. The timestamp
@@ -343,7 +343,7 @@ export default async function ChannelsPage() {
             <KeyValue k="x-watchman-signature">sha256=&lt;hex&gt;</KeyValue>
             <KeyValue k="x-watchman-delivery">idempotency key</KeyValue>
           </div>
-          <pre className="overflow-x-auto border border-hairline-soft bg-void px-3 py-2.5 font-mono text-[11px] leading-relaxed text-bone">
+          <pre className="overflow-x-auto rounded-control-md border border-border bg-muted px-3 py-2.5 font-mono type-caption-sm text-foreground">
 {`const expected = crypto
   .createHmac("sha256", SECRET)
   .update(\`\${req.headers["x-watchman-timestamp"]}.\${rawBody}\`)
@@ -361,19 +361,19 @@ if (!crypto.timingSafeEqual(
       {deliveries.length > 0 ? (
         <section className="flex flex-col gap-3">
           <SectionHeader label="recent deliveries" />
-          <Panel className="divide-y divide-hairline-soft">
+          <Panel className="divide-y divide-border">
             {deliveries.map(({ notification, channelName, monitorName }) => (
               <div
                 key={notification.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 font-mono text-[11px]"
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 font-mono type-caption-sm"
               >
                 <span
                   className={
-                    notification.ok ? "size-1.5 shrink-0 bg-live" : "size-1.5 shrink-0 bg-alarm"
+                    notification.ok ? "size-1.5 shrink-0 bg-green-mark" : "size-1.5 shrink-0 bg-red-mark"
                   }
                   aria-hidden
                 />
-                <span className="w-32 shrink-0 tnum text-slate">
+                <span className="w-32 shrink-0 tabular-nums text-subtle-foreground">
                   {notification.at.toLocaleString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -381,18 +381,18 @@ if (!crypto.timingSafeEqual(
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="w-36 shrink-0 truncate text-ash">{channelName}</span>
-                <span className="w-40 shrink-0 truncate text-slate">
+                <span className="w-36 shrink-0 truncate text-muted-foreground">{channelName}</span>
+                <span className="w-40 shrink-0 truncate text-subtle-foreground">
                   {monitorName ?? "—"}
                 </span>
-                <span className="w-16 shrink-0 text-slate">{notification.kind}</span>
+                <span className="w-16 shrink-0 text-subtle-foreground">{notification.kind}</span>
                 {notification.attempts > 1 ? (
-                  <span className="shrink-0 text-warn">×{notification.attempts}</span>
+                  <span className="shrink-0 text-amber-text">×{notification.attempts}</span>
                 ) : null}
-                <span className="min-w-0 flex-1 truncate text-alarm">
+                <span className="min-w-0 flex-1 truncate text-red-text">
                   {notification.error ?? ""}
                 </span>
-                <span className="shrink-0 tnum text-slate">
+                <span className="shrink-0 tabular-nums text-subtle-foreground">
                   {formatMs(notification.durationMs)}
                 </span>
               </div>

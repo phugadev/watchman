@@ -66,14 +66,14 @@ export function LiveTape({
         <MonoLabel>live</MonoLabel>
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.16em]",
-            connected ? "text-live" : "text-slate",
+            "inline-flex items-center gap-1.5 signal type-label-xs",
+            connected ? "text-green-text" : "text-subtle-foreground",
           )}
         >
           <span
             className={cn(
               "size-1.5",
-              connected ? "anim-pulse bg-live" : "bg-slate",
+              connected ? "anim-pulse bg-green-mark" : "bg-gray-solid",
             )}
           />
           {connected ? "streaming" : "reconnecting"}
@@ -87,10 +87,10 @@ export function LiveTape({
           pinned.current =
             el.scrollHeight - el.scrollTop - el.clientHeight < 24;
         }}
-        className="scan min-h-0 flex-1 overflow-y-auto px-4 pb-3 font-mono text-[11px] leading-[1.7]"
+        className="scan min-h-0 flex-1 overflow-y-auto px-4 pb-3 font-mono type-caption-sm"
       >
         {events.length === 0 ? (
-          <li className="py-3 text-slate">
+          <li className="py-3 text-subtle-foreground">
             <span className="anim-blink">▍</span> waiting for the next check…
           </li>
         ) : (
@@ -108,35 +108,35 @@ function TapeRow({ event }: { event: WatchmanEvent }) {
 
   return (
     <li className="anim-rise flex items-baseline gap-2 whitespace-nowrap">
-      <span className="shrink-0 tnum text-slate">{time}</span>
+      <span className="shrink-0 tabular-nums text-subtle-foreground">{time}</span>
       <Glyph event={event} />
       <Link
         href={`/monitors/${event.monitorId}`}
-        className="shrink-0 truncate text-ash hover:text-bone hover:underline"
+        className="shrink-0 truncate text-muted-foreground hover:text-foreground hover:underline"
       >
         {event.monitorName}
       </Link>
-      <span className="truncate text-slate">{detail(event)}</span>
+      <span className="truncate text-subtle-foreground">{detail(event)}</span>
     </li>
   );
 }
 
 function Glyph({ event }: { event: WatchmanEvent }) {
   const map: Record<WatchmanEvent["type"], { char: string; tone: string }> = {
-    check: { char: "·", tone: "text-slate" },
-    incident_opened: { char: "▲", tone: "text-alarm" },
-    incident_resolved: { char: "▼", tone: "text-live" },
-    incident_acknowledged: { char: "◆", tone: "text-amp" },
-    heartbeat_ping: { char: "♥", tone: "text-live" },
+    check: { char: "·", tone: "text-subtle-foreground" },
+    incident_opened: { char: "▲", tone: "text-red-text" },
+    incident_resolved: { char: "▼", tone: "text-green-text" },
+    incident_acknowledged: { char: "◆", tone: "text-foreground" },
+    heartbeat_ping: { char: "♥", tone: "text-green-text" },
   };
 
   let { char, tone } = map[event.type];
 
   if (event.type === "check") {
-    if (event.status === "down") ({ char, tone } = { char: "✕", tone: "text-alarm" });
+    if (event.status === "down") ({ char, tone } = { char: "✕", tone: "text-red-text" });
     else if (event.status === "degraded")
-      ({ char, tone } = { char: "~", tone: "text-warn" });
-    else ({ char, tone } = { char: "✓", tone: "text-live" });
+      ({ char, tone } = { char: "~", tone: "text-amber-text" });
+    else ({ char, tone } = { char: "✓", tone: "text-green-text" });
   }
 
   return (

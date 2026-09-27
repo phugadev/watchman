@@ -15,7 +15,7 @@ export default async function NewMonitorPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <SectionHeader label="new monitor" />
-        <h1 className="text-2xl font-semibold tracking-tight text-bone">
+        <h1 className="type-title font-semibold text-foreground">
           Add something to watch
         </h1>
       </div>

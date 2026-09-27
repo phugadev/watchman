@@ -1,95 +1,53 @@
 @import "tailwindcss";
+@import "shadcn/tailwind.css";
+@import "../../styles/minima.css";
 
 /*
- * Watchman design tokens.
+ * Watchman on Minima.
  *
- * The neutral ramp is deliberately hue-shifted to 148 (a cool green) rather than
- * pure grey — near-black surfaces pick up a faint instrument-panel cast, and warm
- * off-white text at hue 96 sits against it without the clinical blue tint you get
- * from #fff on #000. Colour is *signal only*: if something is yellow, mint, or red
- * on this surface, it means something.
+ * Minima owns colour, type, space, depth, motion, focus, selection and the
+ * browser's own chrome, in both modes; styles/minima.css is installed from the
+ * registry and never edited here. This file is what is Watchman's own: its
+ * faces, the three instrument textures, the shape cues on the uptime tape, and
+ * its animations.
+ *
+ * Colour is still signal only, and now it is Minima's signal: up is green,
+ * degraded amber, down red, maintenance purple, informational blue. If
+ * something on this surface has a hue, it means something.
  */
+
 @theme {
-  /* ---- surfaces ------------------------------------------------------ */
-  --color-void: oklch(0.145 0.01 148); /* page background */
-  --color-panel: oklch(0.18 0.012 148); /* raised card */
-  --color-panel-2: oklch(0.215 0.012 148); /* nested / hover */
-  --color-hairline: oklch(0.31 0.012 148); /* borders, rules */
-  --color-hairline-soft: oklch(0.255 0.012 148);
-
-  /* ---- text ---------------------------------------------------------- */
-  --color-bone: oklch(0.94 0.008 96); /* primary text */
-  --color-ash: oklch(0.69 0.012 148); /* secondary text */
-  --color-slate: oklch(0.52 0.012 148); /* tertiary / disabled */
-
-  /* ---- signal -------------------------------------------------------- */
-  --color-amp: oklch(0.88 0.18 96); /* acid yellow — attention, brand */
-  --color-live: oklch(0.76 0.15 155); /* mint — healthy, operational */
-  --color-alarm: oklch(0.67 0.22 26.43); /* red — down, failing */
-  --color-warn: oklch(0.78 0.16 62); /* amber — degraded */
-  --color-info: oklch(0.68 0.18 255); /* blue — informational */
-  --color-violet: oklch(0.64 0.18 302); /* maintenance */
-
-  /* ---- type ---------------------------------------------------------- */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
     Consolas, monospace;
-
-  /* ---- motion -------------------------------------------------------- */
-  --ease-instrument: cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* ---- radii --------------------------------------------------------- */
-  /* Watchman is square. Radius is reserved for pills and avatars only. */
-  --radius-none: 0px;
 }
 
-:root {
-  color-scheme: dark;
-  --hatch-color: oklch(1 0 0 / 0.045);
-  --grid-color: oklch(1 0 0 / 0.028);
-}
-
-* {
-  border-color: var(--color-hairline-soft);
-}
-
-html {
-  background: var(--color-void);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-body {
-  background: var(--color-void);
-  color: var(--color-bone);
-  font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv01";
-}
-
-::selection {
-  background: var(--color-amp);
-  color: var(--color-void);
-}
-
-/* Tabular figures everywhere numbers are compared vertically. */
-.tnum {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    font-feature-settings: "ss01", "cv01";
+    text-rendering: optimizeLegibility;
+  }
 }
 
 /* --------------------------------------------------------------------------
  * Surface textures
  *
  * Three repeating backgrounds carry most of the visual identity:
- *   .hatch — 45° pinstripes, used on frames and "empty"/inert regions
- *   .grid  — engineering graph paper, used behind charts
- *   .scan  — 1px horizontal scanlines, used on live/streaming regions
+ *   .hatch      — 45° pinstripes, on frames and empty or inert regions
+ *   .grid-paper — engineering graph paper, behind charts
+ *   .scan       — 1px horizontal scanlines, on live or streaming regions
+ *
+ * Drawn from Minima's translucent tints, so they are ink on paper in light
+ * mode and light on ink in dark, at the same visual weight in both.
  * ---------------------------------------------------------------------- */
 .hatch {
   background-image: repeating-linear-gradient(
     45deg,
-    var(--hatch-color) 0px,
-    var(--hatch-color) 1px,
+    var(--gray-tint) 0px,
+    var(--gray-tint) 1px,
     transparent 1px,
     transparent 6px
   );
@@ -97,16 +55,16 @@ body {
 
 .grid-paper {
   background-image:
-    linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+    linear-gradient(to right, var(--gray-tint-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gray-tint-subtle) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
 .scan {
   background-image: repeating-linear-gradient(
     to bottom,
-    oklch(1 0 0 / 0.022) 0px,
-    oklch(1 0 0 / 0.022) 1px,
+    var(--gray-tint-subtle) 0px,
+    var(--gray-tint-subtle) 1px,
     transparent 1px,
     transparent 3px
   );
@@ -115,12 +73,14 @@ body {
 /* --------------------------------------------------------------------------
  * Uptime tape textures
  *
- * Colour alone must not carry the status (WCAG 1.4.1). Roughly 1 in 12 men has a
- * red-green deficiency, and the status page is the one surface where the audience is
- * the public rather than a colleague — mint and red are close to indistinguishable to
- * them, which would turn "were you down yesterday?" into a guess.
+ * Colour alone must not carry the status (WCAG 1.4.1). Roughly 1 in 12 men has
+ * a red-green deficiency, and the status page is the one surface where the
+ * audience is the public rather than a colleague — green and red are close to
+ * indistinguishable to them, which would turn "were you down yesterday?" into
+ * a guess.
  *
- * Each non-operational state therefore carries a shape cue as well. Both patterns are
+ * Each non-operational state therefore carries a shape cue as well, cut out
+ * of the bar in the page's own ground so it reads in either mode. Both are
  * sized to stay legible at the ~8px bar width a 90-day tape produces on a phone.
  * ---------------------------------------------------------------------- */
 
@@ -129,8 +89,8 @@ body {
   background-image: linear-gradient(
     to bottom,
     transparent 38%,
-    var(--color-void) 38%,
-    var(--color-void) 62%,
+    var(--background) 38%,
+    var(--background) 62%,
     transparent 62%
   );
 }
@@ -139,8 +99,8 @@ body {
 .tape-down {
   background-image: repeating-linear-gradient(
     45deg,
-    var(--color-void) 0px,
-    var(--color-void) 1.5px,
+    var(--background) 0px,
+    var(--background) 1.5px,
     transparent 1.5px,
     transparent 4px
   );
@@ -148,48 +108,17 @@ body {
 
 /* Dotted rule — the workhorse divider. */
 .rule-dotted {
-  border-top: 1px dashed var(--color-hairline);
+  border-top: 1px dashed var(--gray-border-strong);
   border-image: repeating-linear-gradient(
       to right,
-      var(--color-hairline) 0 2px,
+      var(--gray-border-strong) 0 2px,
       transparent 2px 6px
     )
     1;
 }
 
 /* --------------------------------------------------------------------------
- * Focus ring — square, offset, amp yellow. Never a soft glow.
- * ---------------------------------------------------------------------- */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-amp);
-  outline-offset: 2px;
-  border-radius: 0;
-}
-
-/* --------------------------------------------------------------------------
- * Scrollbars — thin, hairline, no rounded thumbs.
- * ---------------------------------------------------------------------- */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-hairline) transparent;
-}
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--color-hairline);
-  border: 3px solid var(--color-void);
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--color-slate);
-}
-
-/* --------------------------------------------------------------------------
- * Animations
+ * Animations. Minima enforces reduced motion globally, keyframes included.
  * ---------------------------------------------------------------------- */
 @keyframes wm-pulse {
   0%,
@@ -247,10 +176,10 @@ body {
 }
 
 .anim-pulse {
-  animation: wm-pulse 2s var(--ease-instrument) infinite;
+  animation: wm-pulse 2s var(--ease-out) infinite;
 }
 .anim-rise {
-  animation: wm-rise 0.4s var(--ease-instrument) both;
+  animation: wm-rise 0.4s var(--ease-out) both;
 }
 .anim-blink {
   animation: wm-blink 1.1s step-end infinite;
@@ -262,15 +191,6 @@ body {
   position: absolute;
   inset-block: 0;
   inline-size: 25%;
-  background: linear-gradient(90deg, transparent, var(--color-amp), transparent);
+  background: linear-gradient(90deg, transparent, var(--foreground), transparent);
   animation: wm-sweep 1.4s linear infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .anim-pulse,
-  .anim-rise,
-  .anim-blink,
-  .anim-sweep::after {
-    animation: none !important;
-  }
 }

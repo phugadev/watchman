@@ -23,7 +23,7 @@ export default async function InvitePage({
       >
         <Link
           href="/login"
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-amp hover:underline"
+          className="signal type-label-sm text-foreground hover:underline"
         >
           Go to sign in →
         </Link>

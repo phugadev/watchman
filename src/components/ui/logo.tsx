@@ -37,7 +37,7 @@ export function Mark({
         y="9"
         width="6"
         height="6"
-        className={live ? "fill-amp" : "fill-slate"}
+        className={live ? "fill-green-mark" : "fill-gray-solid"}
       />
     </svg>
   );
@@ -52,8 +52,8 @@ export function Wordmark({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <Mark size={size} className="text-bone" />
-      <span className="font-sans text-[15px] font-semibold tracking-tight text-bone">
+      <Mark size={size} className="text-foreground" />
+      <span className="type-subheading font-semibold text-foreground">
         Watchman
       </span>
     </span>

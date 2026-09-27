@@ -1,21 +1,25 @@
 import { cn } from "@/lib/cn";
 import { GRADE_CAPTION, type Grade } from "@/lib/metrics/grade";
 
+/* Six grades, six hues, each as a Minima tinted chip — text on a fill, which
+   Minima guarantees legible in both modes. The letter carries the grade, so
+   colour is never the only signal. D and F used to share red; they are two
+   different verdicts and now read as two. */
 const TONE_BG: Record<Grade, string> = {
-  S: "bg-amp text-void",
-  A: "bg-live text-void",
-  B: "bg-info text-void",
-  C: "bg-warn text-void",
-  D: "bg-alarm text-bone",
-  F: "bg-alarm text-bone",
+  S: "border-cyan-border bg-cyan-fill text-cyan-text",
+  A: "border-green-border bg-green-fill text-green-text",
+  B: "border-blue-border bg-blue-fill text-blue-text",
+  C: "border-amber-border bg-amber-fill text-amber-text",
+  D: "border-orange-border bg-orange-fill text-orange-text",
+  F: "border-red-border bg-red-fill text-red-text",
 };
 
 const SIZES = {
-  xs: "size-5 text-[11px]",
-  sm: "size-7 text-sm",
-  md: "size-10 text-lg",
-  lg: "size-20 text-4xl",
-  xl: "size-40 text-8xl",
+  xs: "size-5 rounded-mark type-caption-sm",
+  sm: "size-7 rounded-mark type-body",
+  md: "size-10 rounded-control-md type-heading",
+  lg: "size-20 rounded-panel type-display",
+  xl: "size-40 rounded-panel text-8xl",
 } as const;
 
 /**
@@ -38,7 +42,7 @@ export function GradeBadge({
     <span
       title={title ?? `Grade ${grade} — ${GRADE_CAPTION[grade]}`}
       className={cn(
-        "inline-grid shrink-0 place-items-center font-sans font-bold leading-none tracking-tight",
+        "inline-grid shrink-0 place-items-center border font-sans font-bold leading-none",
         TONE_BG[grade],
         SIZES[size],
         className,
