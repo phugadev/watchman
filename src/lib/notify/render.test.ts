@@ -1,3 +1,4 @@
+import { emailPalette } from "./palette";
 import { describe, expect, it } from "vitest";
 import {
   alertFields,
@@ -138,11 +139,14 @@ describe("renderSlack", () => {
 
 describe("renderDiscord", () => {
   it("converts the accent to the decimal integer Discord expects", () => {
-    // #e5484d — a hex string here renders as a black stripe.
-    expect(renderDiscord(payload()).embeds[0]!.color).toBe(0xe5484d);
-    expect(renderDiscord(payload({ event: "monitor.up" })).embeds[0]!.color).toBe(
-      0x30a46c,
-    );
+    // A hex string here renders as a black stripe. The colours are Minima's
+    // dark marks: red for down, green for up.
+    const down = renderDiscord(payload()).embeds[0]!.color;
+    const up = renderDiscord(payload({ event: "monitor.up" })).embeds[0]!.color;
+    expect(Number.isInteger(down)).toBe(true);
+    expect(down).toBe(parseInt(emailPalette.dark.tones.down.mark.slice(1), 16));
+    expect(up).toBe(parseInt(emailPalette.dark.tones.up.mark.slice(1), 16));
+    expect(down).not.toBe(up);
   });
 
   it("lays the cause full width and everything else two-up", () => {

@@ -1,3 +1,4 @@
+import { emailPalette } from "./palette";
 import { formatDuration, formatMs } from "@/lib/metrics/uptime";
 import type { AlertPayload } from "./types";
 
@@ -177,22 +178,27 @@ export function alertFields(p: AlertPayload): AlertField[] {
 }
 
 /**
- * Accent colour per event, as a hex string.
- *
- * Deliberately not the design system's tokens: these render on someone else's
- * white or dark background, where the dashboard's near-black mint has no
- * contrast. Same semantics, adjusted for a surface Watchman does not control.
+ * Which Minima tone each event wears. An escalation is the same outage, still
+ * happening, so it takes down's red; a distinct colour would suggest a
+ * distinct condition. Acknowledged and test are not states that need action.
  */
-export const EVENT_COLOR: Record<AlertPayload["event"], string> = {
-  "monitor.down": "#e5484d",
-  "monitor.up": "#30a46c",
-  "monitor.degraded": "#f5a524",
-  "monitor.acknowledged": "#8e8e93",
-  // Same red as `down`: an escalation is the same outage, still happening. A
-  // distinct colour would suggest a distinct condition.
-  "monitor.escalated": "#e5484d",
-  test: "#6e6e78",
+const EVENT_TONE: Record<AlertPayload["event"], keyof typeof emailPalette.light.tones> = {
+  "monitor.down": "down",
+  "monitor.up": "up",
+  "monitor.degraded": "degraded",
+  "monitor.acknowledged": "neutral",
+  "monitor.escalated": "down",
+  test: "neutral",
 };
+
+/**
+ * Accent colour per event, as a hex string, for surfaces that take one colour
+ * and render it on a dark ground — Discord's embed stripe. Minima's dark mark
+ * for the event's tone.
+ */
+export const EVENT_COLOR: Record<AlertPayload["event"], string> = Object.fromEntries(
+  Object.entries(EVENT_TONE).map(([event, tone]) => [event, emailPalette.dark.tones[tone].mark]),
+) as Record<AlertPayload["event"], string>;
 
 export function eventHeadline(p: AlertPayload): string {
   return HEADLINE[p.event];
@@ -335,57 +341,87 @@ export function renderDiscord(p: AlertPayload): DiscordMessage {
  * ------------------------------------------------------------------------- */
 
 /**
- * HTML email body.
+ * HTML email body, in Minima's colours and both of its modes.
  *
- * Table layout and inline styles, because email clients are not browsers: Outlook
- * ignores most of flexbox and Gmail strips <style> blocks. Dark-background by
- * design, matching the dashboard, with explicit light text so a client forcing
- * its own dark mode cannot produce white-on-white.
+ * Email clients are not browsers. Table layout and inline styles carry the
+ * light design, which every client renders — Outlook ignores most of flexbox,
+ * and Gmail keeps inline styles when it drops media queries. A dark-mode block
+ * then swaps in Minima's dark values for clients that honour
+ * prefers-color-scheme (Apple Mail, iOS Mail); every element it touches has a
+ * class for it, and !important because inline styles otherwise win. Clients
+ * that force their own dark mode get a light design to invert, which is the
+ * case they are built for.
+ *
+ * Every colour comes from palette.ts, generated from styles/minima.css.
  */
 export function renderEmailHtml(p: AlertPayload): string {
-  const accent = EVENT_COLOR[p.event];
+  const tone = EVENT_TONE[p.event];
+  const L = emailPalette.light;
+  const D = emailPalette.dark;
+  const t = L.tones[tone];
+  const dt = D.tones[tone];
+  const warn = L.tones.degraded;
+  const dwarn = D.tones.degraded;
+  const { panel, control } = emailPalette.radius;
   const link = p.incident?.url ?? p.monitor.url;
 
   const rows = alertFields(p)
     .map(
       (f) => `
         <tr>
-          <td style="padding:6px 16px 6px 0;color:#8e8e93;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap;vertical-align:top;">${escapeHtml(f.label)}</td>
-          <td style="padding:6px 0;color:#e8e8ea;font-size:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word;">${escapeHtml(f.value)}</td>
+          <td class="wm-subtle" style="padding:6px 16px 6px 0;color:${L.subtle};font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;vertical-align:top;">${escapeHtml(f.label)}</td>
+          <td class="wm-text" style="padding:6px 0;color:${L.text};font-size:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word;">${escapeHtml(f.value)}</td>
         </tr>`,
     )
     .join("");
 
   const flapping = p.incident?.flapping
-    ? `<p style="margin:20px 0 0;padding:12px 14px;background:#1c1c1f;border-left:3px solid #f5a524;color:#c9c9ce;font-size:13px;">This monitor is flapping — further alerts are suppressed until it stabilises.</p>`
+    ? `<p class="wm-flap" style="margin:20px 0 0;padding:12px 14px;background:${warn.fill};border:1px solid ${warn.border};border-left:3px solid ${warn.mark};border-radius:${control};color:${L.text};font-size:13px;">This monitor is flapping — further alerts are suppressed until it stabilises.</p>`
     : "";
 
   const intro =
     p.event === "test"
-      ? `<p style="margin:0 0 20px;color:#c9c9ce;font-size:14px;">This is a test alert. If you can read this, the channel is configured correctly.</p>`
+      ? `<p class="wm-muted" style="margin:0 0 20px;color:${L.muted};font-size:14px;">This is a test alert. If you can read this, the channel is configured correctly.</p>`
       : "";
 
   return `<!doctype html>
 <html>
-  <body style="margin:0;padding:24px;background:#0b0b0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;margin:0 auto;background:#131316;border:1px solid #2a2a2e;">
+  <head>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <style>
+      @media (prefers-color-scheme: dark) {
+        .wm-canvas { background:${D.canvas} !important; }
+        .wm-card { background:${D.card} !important; border-color:${D.border} !important; }
+        .wm-stripe { background:${dt.mark} !important; }
+        .wm-accent { color:${dt.text} !important; }
+        .wm-text { color:${D.text} !important; }
+        .wm-muted { color:${D.muted} !important; }
+        .wm-subtle { color:${D.subtle} !important; }
+        .wm-button { background:${dt.solid} !important; color:${dt.onSolid} !important; }
+        .wm-flap { background:${dwarn.fill} !important; border-color:${dwarn.border} !important; border-left-color:${dwarn.mark} !important; color:${D.text} !important; }
+      }
+    </style>
+  </head>
+  <body class="wm-canvas" style="margin:0;padding:24px;background:${L.canvas};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" class="wm-card" style="width:100%;max-width:560px;margin:0 auto;background:${L.card};border:1px solid ${L.border};border-radius:${panel};border-collapse:separate;overflow:hidden;">
       <tr>
-        <td style="height:3px;background:${accent};font-size:0;line-height:0;">&nbsp;</td>
+        <td class="wm-stripe" style="height:3px;background:${t.mark};font-size:0;line-height:0;">&nbsp;</td>
       </tr>
       <tr>
         <td style="padding:24px;">
-          <p style="margin:0 0 4px;color:${accent};font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;">${escapeHtml(HEADLINE[p.event])}</p>
-          <h1 style="margin:0 0 20px;color:#f4f4f5;font-size:20px;font-weight:600;">${escapeHtml(p.monitor.name)}</h1>
+          <p class="wm-accent" style="margin:0 0 4px;color:${t.text};font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;">${escapeHtml(HEADLINE[p.event])}</p>
+          <h1 class="wm-text" style="margin:0 0 20px;color:${L.text};font-size:20px;font-weight:600;">${escapeHtml(p.monitor.name)}</h1>
           ${intro}
           <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">${rows}</table>
           ${flapping}
           <p style="margin:24px 0 0;">
-            <a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 18px;background:${accent};color:#0b0b0d;font-size:13px;font-weight:600;text-decoration:none;">Open in Watchman</a>
+            <a href="${escapeHtml(link)}" class="wm-button" style="display:inline-block;padding:10px 18px;background:${t.solid};color:${t.onSolid};border-radius:${control};font-size:14px;font-weight:600;text-decoration:none;">Open in Watchman</a>
           </p>
         </td>
       </tr>
     </table>
-    <p style="margin:16px auto 0;max-width:560px;color:#6e6e78;font-size:11px;text-align:center;">
+    <p class="wm-subtle" style="margin:16px auto 0;max-width:560px;color:${L.subtle};font-size:12px;text-align:center;">
       Sent by Watchman · ${escapeHtml(p.monitor.url.replace(/\/monitors\/.*$/, ""))}
     </p>
   </body>
