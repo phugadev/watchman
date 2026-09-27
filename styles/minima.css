@@ -32,7 +32,7 @@
   --gray-6: oklch(0.892 0 0);
   --gray-7: oklch(0.858 0 0);
   --gray-8: oklch(0.64 0 0);
-  --gray-9: oklch(0.52 0 0);
+  --gray-9: oklch(0.44 0 0);
   --gray-10: oklch(0.18 0 0);
   --gray-bg: var(--gray-1);
   --gray-bg-subtle: var(--gray-2);
@@ -45,10 +45,10 @@
   --gray-text: var(--gray-9);
   --gray-text-strong: var(--gray-10);
   --gray-on-solid: oklch(0.18 0 0);
-  --gray-mark: oklch(0.52 0 0);
+  --gray-mark: oklch(0.44 0 0);
   --gray-on-mark: oklch(1 0 0);
   --gray-reading: oklch(0.38 0 0);
-  --gray-text-subtle: oklch(0.537 0 0);
+  --gray-text-subtle: oklch(0.497 0 0);
   --gray-tint-subtle: rgb(7 7 7 / 2.7%);
   --gray-tint: rgb(1 1 1 / 5.8%);
   --gray-tint-hover: rgb(3 3 3 / 8.2%);
@@ -988,7 +988,7 @@
   /* The one name here that is not shadcn's. A third text level, one step
      quieter than muted, added when a real consumer flattened without it —
      solved, not chosen, in scripts/generate-scales.mjs (solveSubtle). Distinct
-     from muted in dark; in light it is legal but the same colour to the eye. */
+     from muted in both modes. */
   --subtle-foreground: var(--gray-text-subtle);
   /* Hover is a veil, not a swap: the row underneath might be striped,
      selected, or an image. --muted and --secondary stay opaque because they
