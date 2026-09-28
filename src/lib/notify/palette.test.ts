@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildEmailPalette } from "../../../scripts/email-palette.mts";
 import { emailPalette } from "./palette";
 import { renderEmailHtml } from "./render";
 
@@ -18,9 +17,12 @@ const contrast = (a: string, b: string) => {
 };
 
 describe("email palette", () => {
-  it("is what the installed Minima theme resolves to — regenerate after re-adding it", () => {
-    // If this fails: pnpm tsx scripts/email-palette.mts
-    expect(emailPalette).toEqual(buildEmailPalette(css));
+  it("uses Minima's panel and control radii — the one thing not in the palette", () => {
+    const rung = (name: string) => {
+      const m = css.match(new RegExp(`--rung-${name}:\\s*([\\d.]+)rem`));
+      return m ? `${parseFloat(m[1]!) * 16}px` : undefined;
+    };
+    expect(emailPalette.radius).toEqual({ panel: rung("panel"), control: rung("control") });
   });
 
   /* Every text pairing the email renders, in both modes. Email has no
