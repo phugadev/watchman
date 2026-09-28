@@ -2421,8 +2421,9 @@
 /* ── Highlighter bindings ───────────────────────────────────────────────────
 
    Class-based highlighters (Prism, highlight.js) get mapped here. Shiki emits
-   inline styles instead, so it takes the generated theme in
-   app/syntax-light.json / syntax-dark.json — same tokens, different delivery.
+   inline styles instead, so it takes the generated themes (the syntax-shiki
+   registry item) — same tokens, different delivery — and the mode switch at
+   the end of this file.
 
    Scoped under .prose so a code sample inside interface chrome is not silently
    restyled, matching how the rest of prose behaves. */
@@ -2507,5 +2508,44 @@
     color: var(--syntax-gutter);
     user-select: none;
     -webkit-user-select: none;
+  }
+}
+
+/* ── Shiki, following the page's mode ──────────────────────────────────────
+
+   Given both of Minima's themes — `themes: { light, dark }` in Shiki, or
+   `theme: { light, dark }` in rehype-pretty-code — Shiki writes every token's
+   colour for both modes as custom properties, and something has to pick one.
+   Left to the consumer, the pick gets forgotten and the dark palette ends up
+   on a light page, pale tokens on white; a consumer built exactly that.
+
+   Keyed on the properties Shiki writes, not on a class, so this touches
+   nothing but Shiki output and needs no .prose scope. It covers both of
+   Shiki's output shapes:
+
+     defaultColor: "light" (Shiki's default) — an inline `color` for light
+       and --shiki-dark alongside; only dark needs a rule, and !important is
+       what lets a stylesheet beat an inline style.
+     defaultColor: false (rehype-pretty-code's) — --shiki-light and
+       --shiki-dark only, no inline colour; both modes need a rule.
+
+   The "-bg" pair is the block background, for anyone keeping Shiki's own
+   ground rather than Minima's code ground. Dark is keyed off .dark, like the
+   rest of the theme. The selectors only match where Shiki wrote the property,
+   so the fallbacks never apply; they are there so no declaration here can be
+   dropped silently (audit-cascade). audit-install renders both shapes in
+   both modes. */
+@layer components {
+  [style*="--shiki-light:"] {
+    color: var(--shiki-light, currentColor);
+  }
+  [style*="--shiki-light-bg:"] {
+    background-color: var(--shiki-light-bg, transparent);
+  }
+  .dark [style*="--shiki-dark:"] {
+    color: var(--shiki-dark, currentColor) !important;
+  }
+  .dark [style*="--shiki-dark-bg:"] {
+    background-color: var(--shiki-dark-bg, transparent) !important;
   }
 }
